@@ -487,7 +487,7 @@ function calHtml(p,cs){
 function detHtml(p){
   const cs=cal[p.id],u0=S.ult&&CTRY[S.ult.p]&&resCid(S.ult.p,S.ult.c)?S.ult:{p:'BR',c:'Rio de Janeiro'},
    day=p.vendas.filter(v=>v.d===cs.sel).sort((a,b)=>(a.h||'')<(b.h||'')?-1:1);
-  return `<tr class="det" data-p="${p.id}"><td colspan="11"><div class="detg">
+  return `<tr class="det" data-p="${p.id}"><td colspan="12"><div class="detg">
   <div><h3>Dados da campanha (opcional)</h3><div class="fg">
    <label>Impressões<input class="num" type="number" min="0" data-f="imp" value="${p.imp||''}"></label>
    <label>Cliques<input class="num" type="number" min="0" data-f="cliques" value="${p.cliques||''}"></label>
@@ -515,18 +515,18 @@ function viewContas(){
     const t=calcConta(c);
     h+=`<section class="conta" data-c="${c.id}"><div class="chead"><input class="nome" data-f="cnome" value="${esc(c.nome)}" aria-label="Nome da conta">
     <div class="stats">${stat('Depositado',brl(t.dep))}${stat('Gasto',brl(t.gasto))}${stat('Saldo na conta',brl(t.saldo),t.saldo<0?'neg':'')}${stat('Vendas (un.)',t.un)}${stat('Lucro líquido',brl(t.liq),cls(t.liq))}${stat('ROI',pct(t.roi),cls(t.roi))}</div></div>
-    <div class="tw"><table><thead><tr><th>Produto</th><th>No ar desde</th><th>Gasto (R$)</th><th>Comissão (R$/venda)</th><th>Vendas (un.)</th><th>Receita</th><th>Lucro líquido</th><th>ROI</th><th>ROAS</th><th>Margem</th><th></th></tr></thead><tbody>`;
+    <div class="tw"><table><thead><tr><th>Produto</th><th>No ar desde</th><th>Gasto (R$)</th><th>Comissão (R$/venda)</th><th>Vendas (un.)</th><th>Receita</th><th>Custo por venda</th><th>Lucro líquido</th><th>ROI</th><th>ROAS</th><th>Margem</th><th></th></tr></thead><tbody>`;
     c.prods.forEach(p=>{
       const r=calc(p.gasto,un(p)*p.comissao);
       h+=`<tr data-p="${p.id}"><td><input data-f="pnome" value="${esc(p.nome)}" aria-label="Produto"></td>
       <td><input type="date" data-f="inicio" value="${p.inicio}" style="width:140px" aria-label="Data em que subiu"></td>
-      <td><input class="num" type="number" step="0.01" min="0" data-f="gasto" value="${p.gasto||''}" placeholder="0,00"${p.ads?' readonly title="Vem do Google Ads (importado). Importe de novo para atualizar."':''}></td>
+      <td><input class="num" type="number" step="0.01" min="0" data-f="gasto" value="${p.gasto||''}" placeholder="0,00"${p.ads?' readonly title="Vem do Google Ads (automático). Importe de novo para atualizar."':''}></td>
       <td><input class="num" type="number" step="0.01" min="0" data-f="comissao" value="${p.comissao||''}" placeholder="0,00"></td>
       <td><b>${un(p)}</b> <button class="mini" data-a="plus1" title="Registrar 1 venda agora (horário de Brasília)">+1</button> <button class="mini${cal[p.id]?' on':''}" data-a="toggle" title="Calendário de vendas e dados da campanha">📅</button></td>
-      <td>${brl(r.rec)}</td><td class="${cls(r.liq)}"><b>${brl(r.liq)}</b></td><td class="${cls(r.roi)}">${pct(r.roi)}</td><td>${x2(r.roas)}</td><td>${pct(r.marg)}</td>
+      <td>${brl(r.rec)}</td><td>${un(p)?brl(p.gasto/un(p)):'–'}</td><td class="${cls(r.liq)}"><b>${brl(r.liq)}</b></td><td class="${cls(r.roi)}">${pct(r.roi)}</td><td>${x2(r.roas)}</td><td>${pct(r.marg)}</td>
       <td><button class="x" data-a="delProd" title="Remover produto" aria-label="Remover produto">×</button></td></tr>`+(cal[p.id]?detHtml(p):'')});
     h+=`</tbody>`;
-    if(c.prods.length)h+=`<tfoot><tr><td>Total da conta</td><td></td><td>${brl(t.gasto)}</td><td></td><td>${t.un}</td><td>${brl(t.rec)}</td><td class="${cls(t.liq)}">${brl(t.liq)}</td><td class="${cls(t.roi)}">${pct(t.roi)}</td><td>${x2(t.roas)}</td><td>${pct(t.marg)}</td><td></td></tr></tfoot>`;
+    if(c.prods.length)h+=`<tfoot><tr><td>Total da conta</td><td></td><td>${brl(t.gasto)}</td><td></td><td>${t.un}</td><td>${brl(t.rec)}</td><td>${t.un?brl(t.gasto/t.un):'–'}</td><td class="${cls(t.liq)}">${brl(t.liq)}</td><td class="${cls(t.roi)}">${pct(t.roi)}</td><td>${x2(t.roas)}</td><td>${pct(t.marg)}</td><td></td></tr></tfoot>`;
     h+=`</table></div><div class="actions"><button data-a="addProd">+ Produto</button><button class="x" data-a="delConta" style="font-size:13px">Excluir conta</button></div>
     <div class="deps"><b>Depósitos:</b>${c.deps.map(d=>`<span class="chip" data-d="${d.id}">${bd(d.data)} · ${brl(d.valor)} <button class="x" data-a="delDep" title="Remover depósito" aria-label="Remover depósito">×</button></span>`).join('')}
     <input type="date" data-n="data" value="${iso()}"><input type="number" step="0.01" min="0" data-n="valor" placeholder="Valor R$"><button data-a="addDep">Adicionar depósito</button>
@@ -794,8 +794,8 @@ function aplicaVendas(p,g){
     if(!seen.has(key)){seen.add(key);V.ids.push(key);R.nv++;V.dia[r.d]=(V.dia[r.d]||0)+1;if(r.h)V.hr[+r.h.slice(0,2)]++;
       const dv=devC(r.tipo);if(dv)V.disp[dv]=(V.disp[dv]||0)+1;V.pais[r.G.p]=(V.pais[r.G.p]||0)+1;if(r.tempo>0){V.tp[0]+=r.tempo;V.tp[1]++}}
     if(!r.sale)return;
-    if(r.sid?ss.has(r.sid):p.vendas.some(v=>v.d===r.d&&v.h===r.h&&v.cid===r.cidade&&v.pais===r.G.p)){R.rs++;return}
-    if(r.sid)ss.add(r.sid);
+    const ex=r.sid?p.vendas.find(v=>v.sid===r.sid):p.vendas.find(v=>v.d===r.d&&v.h===r.h&&v.cid===r.cidade&&v.pais===r.G.p);
+    if(ex){if(r.com>0&&!ex.cm)ex.cm=r.com;R.rs++;return}
     p.vendas.push({id:uid(),sid:r.sid||'',d:r.d,h:r.h,pais:r.G.p,cid:r.cidade||'–',z:r.G.z,n:1,uf:r.estado,dv:devC(r.tipo),tp:r.tempo,cm:r.com||0});
     R.ns++;if(r.G.ap)R.ap++;if(r.tempo>0){V.tpv[0]+=r.tempo;V.tpv[1]++}});
   // comissão do produto = média das comissões das vendas que trazem esse valor (coluna "Comissao" da planilha)
@@ -823,13 +823,17 @@ async function abrir(list){
         Object.entries(r.G).forEach(([k,g])=>{const o=VG[k]??={nome:g.nome,rows:[],host:'',sem:0};o.rows.push(...g.rows);o.host=o.host||g.host;o.sem+=g.sem})}
       else(pk[f.pkg]??=[]).push(c)});
     const AD=Object.entries(pk).map(([pkg,cl])=>{const A=adsDe(cl);return {pkg,A,nome:A.nome||pkg.replace(/\.zip$/i,''),tipos:cl.map(c=>c.t)}});
-    if(AD.length&&!Object.keys(VG).length)av.push('Nenhuma planilha de vendas foi selecionada junto: só os dados do Google Ads serão importados. Para trazer as vendas, importe também o CSV da planilha de vendas.');
-    IMP={VG,AD,ign,av};
-    if(!AD.length&&!Object.keys(VG).length){openDlg(`<h2>Importar dados</h2><p>Não reconheci nenhum arquivo.${ign.length?' Ignorados: '+ign.map(esc).join(', '):''}</p><div class="bar"><button id="i-x">Fechar</button></div>`);$('i-x').onclick=closeDlg;return}
+    // da planilha de vendas só entram os sites que têm o mesmo nome de um produto já criado
+    const skip=[],hadSheet=Object.keys(VG).length>0;
+    Object.keys(VG).forEach(k=>{const m=S.map?.['s:'+k],sg=slug(VG[k].nome);
+      if(!allProds().some(x=>slug(x.p.nome)===sg||(m&&x.p.id===m))){skip.push(VG[k].nome+' ('+VG[k].rows.length+' linhas)');delete VG[k]}});
+    if(AD.length&&!Object.keys(VG).length)av.push(hadSheet?'Nenhum site da planilha de vendas tem o mesmo nome de um produto criado, então nenhuma venda será importada. Crie o produto com o nome exato do site (ex.: akemi-coffee-boost) e importe de novo.':'Nenhuma planilha de vendas foi selecionada junto: só os dados do Google Ads serão importados. Para trazer as vendas, importe também o CSV da planilha de vendas.');
+    IMP={VG,AD,ign,av,skip};
+    if(!AD.length&&!Object.keys(VG).length){openDlg(`<h2>Importar dados</h2><p>${hadSheet?'Nenhum site da planilha tem o mesmo nome de um produto criado. Crie o produto com o nome exato do site e importe de novo.<br><span class="lbl">Sites na planilha: '+skip.map(esc).join(', ')+'</span>':'Não reconheci nenhum arquivo.'}${ign.length?' Ignorados: '+ign.map(esc).join(', '):''}</p><div class="bar"><button id="i-x">Fechar</button></div>`);$('i-x').onclick=closeDlg;return}
     mostra()
   }catch(e){openDlg(`<h2>Importar dados</h2><p class="warn">Erro ao ler: ${esc(e.message||e)}</p><div class="bar"><button id="i-x">Fechar</button></div>`);$('i-x').onclick=closeDlg}}
 
-function guessSite(k){const m=S.map?.['s:'+k];if(m&&findProd(m))return 'p:'+m;const f=allProds().find(x=>norm(x.p.nome)===k);return f?'p:'+f.p.id:'n:'+(S.contas[0]?.id||'')}
+function guessSite(k,nome){const m=S.map?.['s:'+k];if(m&&findProd(m))return 'p:'+m;const f=allProds().find(x=>slug(x.p.nome)===slug(nome));return f?'p:'+f.p.id:'n:'+(S.contas[0]?.id||'')}
 function guessAds(nome,G){
   const k=norm(nome),sk=slug(nome),P=allProds(),m=S.map?.['c:'+k];if(m&&findProd(m))return 'p:'+m;
   let f=P.find(x=>x.p.camp&&norm(x.p.camp)===k)||P.find(x=>slug(x.p.nome)===sk)||P.find(x=>x.p.host&&slug(x.p.host).includes(sk));if(f)return 'p:'+f.p.id;
@@ -837,6 +841,7 @@ function guessAds(nome,G){
   const tk=toks(nome);let best=null,sc=0;
   P.forEach(x=>{const t=new Set(toks(x.p.nome+' '+(x.p.host||'')+' '+(x.p.camp||'')));const s=tk.filter(y=>t.has(y)).length;if(s>sc){sc=s;best='p:'+x.p.id}});
   Object.entries(G).forEach(([gk,v])=>{const t=new Set(toks(v.nome+' '+v.host));const s=tk.filter(y=>t.has(y)).length;if(s>sc){sc=s;best='g:'+gk}});
+  const gk=Object.keys(G);if(!best&&gk.length===1)best='g:'+gk[0];
   return best||'n:'+(S.contas[0]?.id||'')}
 function optsHtml(def,G,rotulo){
   return allProds().map(x=>`<option value="p:${x.p.id}"${def==='p:'+x.p.id?' selected':''}>${esc(x.c.nome)} · ${esc(x.p.nome)}</option>`).join('')
@@ -844,14 +849,15 @@ function optsHtml(def,G,rotulo){
    +(S.contas.length?S.contas.map((c,i)=>`<option value="n:${c.id}"${def==='n:'+c.id?' selected':''}>➕ Criar produto «${esc(rotulo)}» em ${esc(c.nome)}</option>`).join(''):`<option value="n:" selected>➕ Criar conta e produto «${esc(rotulo)}»</option>`)
    +`<option value="x">Ignorar estes dados</option>`}
 function mostra(){
-  const {VG,AD,ign,av}=IMP;let h='<h2>Importar dados</h2><p class="lbl">Confira a ligação de cada arquivo com um produto e clique em Importar. Essa escolha fica salva: nas próximas vezes a ligação é automática.</p>';
+  const {VG,AD,ign,av,skip}=IMP;let h='<h2>Importar dados</h2><p class="lbl">Confira a ligação de cada arquivo com um produto e clique em Importar. Essa escolha fica salva: nas próximas vezes a ligação é automática.</p>';
   Object.entries(VG).forEach(([k,g])=>{
     const nS=g.rows.filter(r=>r.sale).length,ap=g.rows.filter(r=>r.G.ap).length,sp=[...new Set(g.rows.filter(r=>r.G.ap==='país não reconhecido').map(r=>r.pais))];
     h+=`<div class="imp-i"><div class="t">📋 Planilha de vendas · site «${esc(g.nome)}»</div><div class="lbl">${g.rows.length} linhas (visitas) · ${nS} marcadas como venda${g.host?' · '+esc(g.host):''}${ap?` · ${ap} com fuso aproximado (estado/cidade sem fuso exato)`:''}${sp.length?` · <span class="warn">país não reconhecido: ${sp.map(esc).join(', ')} (usei Brasília)</span>`:''}${g.sem?` · <span class="warn">${g.sem} linhas sem data foram ignoradas</span>`:''}</div>
-    <select data-k="s:${k}">${optsHtml(guessSite(k),null,g.nome)}</select></div>`});
+    <select data-k="s:${k}">${optsHtml(guessSite(k,g.nome),null,g.nome)}</select></div>`});
   AD.forEach((a,i)=>{const ds=Object.keys(a.A.dias).sort(),cu=ds.reduce((t,d)=>t+a.A.dias[d][0],0)||(a.A.camps||[]).reduce((t,x)=>t+x.custo,0),cl=ds.reduce((t,d)=>t+a.A.dias[d][1],0)||(a.A.camps||[]).reduce((t,x)=>t+x.cl,0);
     h+=`<div class="imp-i"><div class="t">📊 Google Ads · campanha «${esc(a.nome)}»</div><div class="lbl">${a.A.ini?bd(a.A.ini)+' a '+bd(a.A.fim)+' · ':''}gasto ${brl(cu)} · ${cl} cliques · ${ds.length} dias na série${(a.A.camps||[]).length>1?' · <span class="warn">'+a.A.camps.length+' campanhas no mesmo arquivo (tratadas como uma)</span>':''}<br>Arquivos reconhecidos: ${[...new Set(a.tipos)].map(t=>TL[t]).join(', ')}${ds.length?'':' · <span class="warn">sem Série temporal: gasto/dia indisponível</span>'}</div>
     <select data-k="a:${i}">${optsHtml(guessAds(a.nome,VG),VG,a.nome)}</select></div>`});
+  if(skip&&skip.length)h+=`<p class="note">Sites da planilha ignorados (não existe produto com o mesmo nome): ${skip.map(esc).join(', ')}</p>`;
   if(ign.length)h+=`<p class="note">Arquivos não reconhecidos (ignorados): ${ign.map(esc).join(', ')}</p>`;
   av.forEach(x=>h+=`<p class="note warn">${esc(x)}</p>`);
   h+=`<div class="bar" style="margin-top:12px"><button id="i-ok" class="primary">Importar</button><button id="i-x">Cancelar</button></div>`;
