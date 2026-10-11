@@ -370,17 +370,18 @@ ZA:f/Johannesburg
 ZM:f/Lusaka
 ZW:f/Harare`;
 // Cidades que usam o fuso de outra. Para adicionar uma cidade, inclua ['Nome','Fuso/IANA'] no país certo.
+const grp=(z,t)=>t.split('|').map(n=>[n.trim(),z]);
 const CIDADES_EXTRAS={
  BR:[['Rio de Janeiro',BRTZ],['Brasilia',BRTZ],['Belo Horizonte',BRTZ],['Curitiba',BRTZ],['Porto Alegre',BRTZ],['Florianopolis',BRTZ],['Goiania',BRTZ],['Vitoria',BRTZ],['Salvador','America/Bahia'],['Natal','America/Fortaleza'],['Sao Luis','America/Fortaleza'],['Teresina','America/Fortaleza'],['Joao Pessoa','America/Fortaleza'],['Aracaju','America/Maceio'],['Palmas','America/Araguaina'],['Macapa','America/Belem'],['Cuiaba','America/Cuiaba']],
- US:[['Miami','America/New_York'],['Washington','America/New_York'],['Boston','America/New_York'],['Atlanta','America/New_York'],['Orlando','America/New_York'],['Tampa','America/New_York'],['Philadelphia','America/New_York'],['Pittsburgh','America/New_York'],['Charlotte','America/New_York'],['Houston','America/Chicago'],['Dallas','America/Chicago'],['Austin','America/Chicago'],['San Antonio','America/Chicago'],['New Orleans','America/Chicago'],['Nashville','America/Chicago'],['Minneapolis','America/Chicago'],['Salt Lake City','America/Denver'],['Seattle','America/Los_Angeles'],['San Francisco','America/Los_Angeles'],['San Diego','America/Los_Angeles'],['Las Vegas','America/Los_Angeles'],['San Jose','America/Los_Angeles']],
+ US:[...grp('America/New_York','Miami|Miami Beach|Washington|Washington DC|Boston|Atlanta|Orlando|Tampa|Jacksonville|Fort Lauderdale|West Palm Beach|Boca Raton|Hialeah|St Petersburg|Fort Myers|Naples|Key West|Tallahassee|Gainesville|Daytona Beach|Philadelphia|Pittsburgh|Harrisburg|Allentown|Charlotte|Raleigh|Durham|Greensboro|Asheville|Wilmington|Baltimore|Newark|Jersey City|Brooklyn|Manhattan|Queens|Bronx|Buffalo|Rochester|Syracuse|Albany|Richmond|Norfolk|Virginia Beach|Hartford|Stamford|New Haven|Providence|Portland Maine|Manchester|Burlington|Cleveland|Columbus|Cincinnati|Dayton|Toledo|Akron|Lexington|Knoxville|Chattanooga|Savannah|Charleston|Columbia|Atlantic City'),...grp('America/Detroit','Ann Arbor|Grand Rapids|Lansing|Flint'),...grp('America/Indiana/Indianapolis','Fort Wayne|South Bend'),...grp('America/Chicago','Houston|Dallas|Austin|San Antonio|Fort Worth|Corpus Christi|Plano|Irving|Arlington|Lubbock|Laredo|New Orleans|Baton Rouge|Nashville|Memphis|Birmingham|Montgomery|Mobile|Huntsville|Jackson|Little Rock|Minneapolis|St Paul|Milwaukee|Madison|Green Bay|Kansas City|St Louis|Oklahoma City|Tulsa|Omaha|Des Moines|Wichita|Fargo|Sioux Falls|Evansville'),...grp('America/Denver','Salt Lake City|Albuquerque|Santa Fe|Colorado Springs|Boulder|Aurora|Fort Collins|El Paso|Cheyenne|Billings|Missoula|Jackson Hole'),...grp('America/Phoenix','Tucson|Mesa|Scottsdale|Tempe|Chandler|Glendale|Flagstaff'),...grp('America/Los_Angeles','Portland|Seattle|Tacoma|Spokane|San Francisco|Oakland|San Jose|Palo Alto|Sacramento|Fresno|Bakersfield|San Diego|Long Beach|Anaheim|Irvine|Riverside|Santa Monica|Santa Barbara|Beverly Hills|Hollywood|Las Vegas|Henderson|Reno|Carson City|Salem|Eugene'),...grp('America/Anchorage','Fairbanks'),...grp('Pacific/Honolulu','Hilo|Maui|Kauai')],
  CA:[['Montreal','America/Toronto'],['Ottawa','America/Toronto'],['Quebec','America/Toronto'],['Calgary','America/Edmonton'],['Saskatoon','America/Regina']],
  GB:[['Manchester','Europe/London'],['Edinburgh','Europe/London'],['Liverpool','Europe/London'],['Birmingham','Europe/London'],['Glasgow','Europe/London'],['Cardiff','Europe/London'],['Belfast','Europe/London']],
- DE:[['Munich','Europe/Berlin'],['Frankfurt','Europe/Berlin'],['Hamburg','Europe/Berlin'],['Cologne','Europe/Berlin']],
- FR:[['Lyon','Europe/Paris'],['Marseille','Europe/Paris'],['Nice','Europe/Paris']],
- ES:[['Barcelona','Europe/Madrid'],['Valencia','Europe/Madrid'],['Sevilla','Europe/Madrid'],['Bilbao','Europe/Madrid']],
+ DE:[...grp('Europe/Berlin','Munich|Frankfurt|Hamburg|Cologne|Stuttgart|Dusseldorf|Dortmund|Essen|Leipzig|Bremen|Dresden|Hanover|Nuremberg|Duisburg|Bochum|Wuppertal|Bielefeld|Bonn|Munster|Karlsruhe|Mannheim|Augsburg|Wiesbaden|Gelsenkirchen|Monchengladbach|Braunschweig|Kiel|Chemnitz|Aachen|Halle|Magdeburg|Freiburg|Krefeld|Lubeck|Mainz|Erfurt|Rostock|Kassel|Potsdam|Heidelberg|Darmstadt|Regensburg|Wurzburg|Ulm|Wolfsburg|Ingolstadt|Gottingen|Saarbrucken|Trier|Konstanz|Jena|Oldenburg|Osnabruck|Offenbach|Baden-Baden|Garmisch-Partenkirchen')],
+ FR:[...grp('Europe/Paris','Lyon|Marseille|Nice|Toulouse|Bordeaux|Nantes|Strasbourg|Lille|Montpellier|Rennes|Reims|Le Havre|Saint-Etienne|Toulon|Grenoble|Dijon|Angers|Nimes|Cannes|Antibes|Avignon|Rouen|Brest|Clermont-Ferrand|Limoges|Tours|Amiens|Metz|Perpignan|Orleans|Mulhouse|Caen|Nancy|Versailles|Biarritz|La Rochelle|Ajaccio|Bastia|Calais|Dunkerque|Poitiers|Pau|Annecy|Chamonix')],
+ ES:[...grp('Europe/Madrid','Barcelona|Valencia|Sevilla|Zaragoza|Malaga|Murcia|Bilbao|Alicante|Cordoba|Valladolid|Vigo|Gijon|Granada|A Coruna|Vitoria|Elche|Oviedo|Santander|Pamplona|San Sebastian|Almeria|Burgos|Salamanca|Toledo|Marbella|Benidorm|Torremolinos|Ibiza|Formentera|Palma de Mallorca|Mallorca|Menorca|Tarragona|Girona|Lleida|Cadiz|Jerez|Huelva|Leon|Logrono|Badajoz|Caceres|Albacete|Castellon|Santiago de Compostela|Merida|Cartagena'),...grp('Atlantic/Canary','Las Palmas|Santa Cruz de Tenerife|Tenerife|Gran Canaria|Lanzarote|Fuerteventura|La Palma'),...grp('Africa/Ceuta','Melilla')],
  IT:[['Milan','Europe/Rome'],['Naples','Europe/Rome'],['Turin','Europe/Rome'],['Florence','Europe/Rome'],['Venice','Europe/Rome']],
- PT:[['Porto','Europe/Lisbon'],['Faro','Europe/Lisbon'],['Coimbra','Europe/Lisbon']],
- CH:[['Geneva','Europe/Zurich'],['Basel','Europe/Zurich']],
+ PT:[...grp('Europe/Lisbon','Porto|Braga|Coimbra|Faro|Aveiro|Setubal|Evora|Viseu|Leiria|Guimaraes|Cascais|Sintra|Amadora|Almada|Oeiras|Albufeira|Lagos|Portimao|Tavira|Viana do Castelo|Braganca|Vila Real|Castelo Branco|Guarda|Santarem|Beja|Portalegre|Tomar|Fatima|Obidos|Nazare|Peniche'),...grp('Atlantic/Madeira','Funchal'),...grp('Atlantic/Azores','Ponta Delgada|Angra do Heroismo|Horta')],
+ CH:[...grp('Europe/Zurich','Geneva|Basel|Bern|Lausanne|Lucerne|Winterthur|St Gallen|Lugano|Biel|Thun|Zug|Fribourg|Schaffhausen|Chur|Neuchatel|Sion|Davos|Zermatt|Interlaken|Montreux|Locarno|St Moritz|Bellinzona|Vevey|Aarau|Baden|Solothurn|Gstaad|Grindelwald')],
  NL:[['Rotterdam','Europe/Amsterdam']],
  AR:[['Rosario','America/Argentina/Cordoba']],
  MX:[['Guadalajara','America/Mexico_City'],['Puebla','America/Mexico_City']],
@@ -389,7 +390,7 @@ const CIDADES_EXTRAS={
  IN:[['Mumbai','Asia/Kolkata'],['New Delhi','Asia/Kolkata'],['Bangalore','Asia/Kolkata'],['Chennai','Asia/Kolkata'],['Hyderabad','Asia/Kolkata']],
  JP:[['Osaka','Asia/Tokyo'],['Kyoto','Asia/Tokyo']],
  RU:[['Saint Petersburg','Europe/Moscow']],
- AU:[['Canberra','Australia/Sydney'],['Gold Coast','Australia/Brisbane'],['Cairns','Australia/Brisbane']],
+ AU:[...grp('Australia/Sydney','Canberra|Newcastle|Wollongong|Central Coast|Albury|Wagga Wagga|Coffs Harbour|Port Macquarie|Orange|Tamworth|Dubbo|Byron Bay|Penrith|Parramatta|Bondi|Nowra|Armidale|Lismore|Goulburn|Bathurst|Queanbeyan'),...grp('Australia/Melbourne','Geelong|Ballarat|Bendigo|Shepparton|Mildura|Warrnambool|Wodonga|Traralgon|Frankston|Mornington'),...grp('Australia/Brisbane','Gold Coast|Surfers Paradise|Cairns|Port Douglas|Townsville|Sunshine Coast|Noosa|Maroochydore|Caloundra|Toowoomba|Mackay|Rockhampton|Bundaberg|Hervey Bay|Gladstone|Mount Isa|Ipswich|Airlie Beach'),...grp('Australia/Adelaide','Mount Gambier|Whyalla|Port Augusta|Murray Bridge|Victor Harbor|Port Lincoln|Coober Pedy'),...grp('Australia/Darwin','Alice Springs|Katherine|Palmerston|Tennant Creek|Uluru|Yulara'),...grp('Australia/Perth','Fremantle|Mandurah|Bunbury|Geraldton|Kalgoorlie|Albany|Broome|Port Hedland|Karratha|Busselton|Margaret River|Esperance|Exmouth|Kununurra'),...grp('Australia/Hobart','Launceston|Devonport|Burnie')],
  NZ:[['Wellington','Pacific/Auckland']],
  AE:[['Abu Dhabi','Asia/Dubai']],
  SA:[['Jeddah','Asia/Riyadh'],['Mecca','Asia/Riyadh']],
@@ -413,6 +414,7 @@ const PBN={};Object.entries(CTRY).forEach(([c,o])=>PBN[norm(o.nome)]=c);
 const pname=k=>CTRY[k]?CTRY[k].nome:k;
 const resPais=t=>PBN[norm(t)]||null;
 const resCid=(c,t)=>{const k=norm(t);return c&&CTRY[c]?CTRY[c].cid.find(x=>norm(x.n)===k)||null:null};
+const cidLivre=(c,t)=>{t=String(t||'').trim();if(!t||!CTRY[c])return null;const zs=[...new Set(CTRY[c].cid.map(x=>x.z))];return zs.length===1?{n:t,z:zs[0]}:null};
 const cidOpts=c=>CTRY[c]?CTRY[c].cid.slice().sort((a,b)=>a.n.localeCompare(b.n,'pt-BR')).map(x=>`<option value="${esc(x.n)}">`).join(''):'';
 document.body.insertAdjacentHTML('beforeend',`<datalist id="dl-pais">${Object.entries(CTRY).sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt-BR')).map(([c,o])=>`<option value="${esc(o.nome)}">`).join('')}</datalist>`);
 
@@ -605,7 +607,7 @@ const newProd=()=>({id:uid(),nome:'Novo produto',inicio:iso(),gasto:0,comissao:0
 // mostra o horário local da cidade escolhida (sem recarregar a tela)
 function prevTxt(box){
   const g=k=>box.querySelector('[data-n='+k+']'),out=g('prev');if(!out)return;
-  const pc=resPais(g('pais').value),ci=resCid(pc,g('cidade').value),d=g('date').value,h=g('time').value;
+  const pc=resPais(g('pais').value),ci=resCid(pc,g('cidade').value)||cidLivre(pc,g('cidade').value),d=g('date').value,h=g('time').value;
   if(!ci){out.textContent='Escolha o país e a cidade da lista.';return}
   if(!d||!h){out.textContent='Informe o horário de Brasília para ver o horário local de '+ci.n+'.';return}
   const l=toLocal({d,h,z:ci.z});out.textContent=`Em ${ci.n}: ${pad(l.h)}:${pad(l.m)} (${bd(l.d)}) · fuso ${ci.z}`}
@@ -625,9 +627,9 @@ document.addEventListener('click',e=>{
   else if(a==='calPrev'||a==='calNext'){const s=cal[p.id],d=new Date(s.y,s.m+(a==='calNext'?1:-1),1);s.y=d.getFullYear();s.m=d.getMonth()}
   else if(a==='selDay')cal[p.id].sel=b.dataset.day;
   else if(a==='plus1'){const u=Date.now(),g=new Date(u+off(BRTZ,u));addSale(p,{d:g.toISOString().slice(0,10),h:pad(g.getUTCHours())+':'+pad(g.getUTCMinutes()),pais:'BR',cid:'Rio de Janeiro',z:BRTZ,n:1})}
-  else if(a==='addSale'){const box=b.closest('td'),g=k=>box.querySelector('[data-n='+k+']').value,d=g('date'),pc=resPais(g('pais')),ci=resCid(pc,g('cidade'));
+  else if(a==='addSale'){const box=b.closest('td'),g=k=>box.querySelector('[data-n='+k+']').value,d=g('date'),pc=resPais(g('pais')),ci=resCid(pc,g('cidade'))||cidLivre(pc,g('cidade'));
     if(!d){alert('Escolha o dia da venda.');return}
-    if(!ci){alert('Escolha um país e uma cidade da lista.');return}
+    if(!ci){alert('Escolha um país e uma cidade da lista (este país tem vários fusos).');return}
     S.ult={p:pc,c:ci.n};addSale(p,{d,h:g('time'),pais:pc,cid:ci.n,z:ci.z,n:Math.max(1,parseInt(g('qty'))||1)})}
   else if(a==='delSale')p.vendas=p.vendas.filter(v=>v.id!==b.closest('[data-s]').dataset.s);
   else if(a==='exemplo'){
@@ -647,7 +649,7 @@ document.addEventListener('change',e=>{
     if(n==='pais'){const c=resPais(pi.value);
       if(!c){pi.value=pi.dataset.prev||pname('BR');return}
       pi.value=pname(c);pi.dataset.prev=pi.value;dl.innerHTML=cidOpts(c);ci.value=CTRY[c].def;ci.dataset.prev=ci.value}
-    else{const c=resPais(pi.value),x=resCid(c,ci.value);
+    else{const c=resPais(pi.value),x=resCid(c,ci.value)||cidLivre(c,ci.value);
       if(!x)ci.value=ci.dataset.prev||(c?CTRY[c].def:'');else{ci.value=x.n;ci.dataset.prev=x.n}}
     prevTxt(box);return}
   if(n==='date'||n==='time'){const box=e.target.closest('td');if(box)prevTxt(box);return}
