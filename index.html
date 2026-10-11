@@ -96,6 +96,7 @@ dialog h2{margin:0 0 4px}
   <div class="bar">
     <button id="b-imp" class="primary" title="Selecione ZIPs/CSVs do Google Ads e a planilha de vendas (ou arraste para esta página)">⬆ Importar CSV / ZIP</button>
     <input type="file" id="f-imp" accept=".csv,.zip,.txt" multiple hidden>
+    <input type="file" id="f-pimp" accept=".csv,.zip,.txt" multiple hidden>
     <label class="status">Taxa/imposto sobre comissões <input id="taxa" type="number" min="0" step="0.1" style="width:64px;border-color:var(--line)"> %</label>
     <button id="b-theme" title="Alternar tema claro/escuro">☾</button>
     <button id="b-save">Baixar backup (.json)</button>
@@ -492,7 +493,9 @@ function detHtml(p){
    <label>Impressões<input class="num" type="number" min="0" data-f="imp" value="${p.imp||''}"></label>
    <label>Cliques<input class="num" type="number" min="0" data-f="cliques" value="${p.cliques||''}"></label>
    <label>CPC atual (R$)<input class="num" type="number" min="0" step="0.01" data-f="cpc" value="${p.cpc||''}"></label>
-   <label>Vendas antigas, sem data<input class="num" type="number" min="0" data-f="sd" value="${p.sd||''}"></label></div>${p.ads?'<p class="prev">Impressões, cliques, CPC e gasto vêm do Google Ads (importados); importe de novo para atualizar.</p>':''}</div>
+   <label>Vendas antigas, sem data<input class="num" type="number" min="0" data-f="sd" value="${p.sd||''}"></label></div>${p.ads?'<p class="prev">Impressões, cliques, CPC e gasto vêm do Google Ads (importados); importe de novo para atualizar.</p>':''}
+   <button class="primary" style="margin-top:10px" data-a="impProd" title="Lê só as linhas cujo Site tem o mesmo nome deste produto">⬆ Importar vendas (CSV) deste produto</button>
+   <p class="prev">Só entram as linhas com Site «${esc(p.nome)}»; as demais são ignoradas.</p></div>
   <div><h3>Calendário de vendas (clique no dia)</h3>${calHtml(p,cs)}</div>
   <div><h3>Registrar venda</h3><div class="fg"><label>Dia (Brasília)<input type="date" data-n="date" value="${cs.sel}"></label><label>Horário de Brasília (RJ)<input type="time" data-n="time"></label>
    <label>País (digite para buscar)<input list="dl-pais" data-n="pais" value="${esc(pname(u0.p))}" placeholder="Digite o país" autocomplete="off"></label>
@@ -833,6 +836,27 @@ async function abrir(list){
     mostra()
   }catch(e){openDlg(`<h2>Importar dados</h2><p class="warn">Erro ao ler: ${esc(e.message||e)}</p><div class="bar"><button id="i-x">Fechar</button></div>`);$('i-x').onclick=closeDlg}}
 
+let PID=null;
+// importa a planilha de vendas direto num produto: só entram as linhas cujo Site tem o mesmo nome do produto
+async function importaProd(list,pid){
+  const p=findProd(pid);list=[...list];if(!p||!list.length)return;
+  try{
+    const rows=[];
+    for(const f of list){const buf=await f.arrayBuffer();
+      if(/\.zip$/i.test(f.name)){for(const e of await unzip(buf)){const b=e.name.split('/').pop();if(/\.(csv|txt)$/i.test(b)&&!b.startsWith('.'))rows.push({name:b,rows:parseCSV(dec(e.bytes))})}}
+      else rows.push({name:f.name,rows:parseCSV(dec(new Uint8Array(buf)))})}
+    const G={};let achou=false;
+    rows.forEach(f=>{const c=classe(f);if(!c||c.t!=='vendas')return;achou=true;const r=vendasDe(c);if(r.erro)return;
+      Object.entries(r.G).forEach(([k,g])=>{const o=G[k]??={nome:g.nome,rows:[],host:'',sem:0};o.rows.push(...g.rows);o.host=o.host||g.host})});
+    if(!achou){alert('Não encontrei uma planilha de vendas nesse arquivo (precisa das colunas Site, IP, Cidade e Venda).');return}
+    const g=Object.values(G).find(x=>slug(x.nome)===slug(p.nome));
+    if(!g){alert('Nenhuma linha da planilha tem o Site «'+p.nome+'».\nSites encontrados: '+Object.values(G).map(x=>x.nome).join(', '));return}
+    const ign=Object.values(G).filter(x=>x!==g).reduce((t,x)=>t+x.rows.length,0),r=aplicaVendas(p,g);
+    persist();render();
+    openDlg(`<h2>Vendas importadas</h2><p style="margin:6px 0">✔ <b>${esc(p.nome)}</b>: <b>+${r.ns}</b> vendas novas${r.rs?` (${r.rs} já estavam registradas)`:''}, <b>+${r.nv}</b> visitas novas de ${r.lin} linhas${r.com?` · comissão por venda: <b>${brl(r.com)}</b>`:''}${r.ap?` · ${r.ap} venda(s) com fuso aproximado`:''}</p>
+     <p class="note">${ign} linha(s) de outros sites foram ignoradas.${r.com?'':' A planilha não trouxe valores na coluna "Comissao": informe a comissão do produto manualmente ou preencha a coluna e importe de novo.'}</p><div class="bar" style="margin-top:12px"><button id="i-x" class="primary">Fechar</button></div>`);
+    $('i-x').onclick=closeDlg;
+  }catch(e){alert('Erro ao ler: '+(e.message||e))}}
 function guessSite(k,nome){const m=S.map?.['s:'+k];if(m&&findProd(m))return 'p:'+m;const f=allProds().find(x=>slug(x.p.nome)===slug(nome));return f?'p:'+f.p.id:'n:'+(S.contas[0]?.id||'')}
 function guessAds(nome,G){
   const k=norm(nome),sk=slug(nome),P=allProds(),m=S.map?.['c:'+k];if(m&&findProd(m))return 'p:'+m;
@@ -970,6 +994,7 @@ document.addEventListener('click',e=>{
   const a=b.dataset.a,c=b.closest('[data-c]')?find(b):null,p=c&&b.closest('[data-p]')?prod(c,b):null;
   if(a==='addConta'){S.contas.push({id:uid(),nome:'Conta '+(S.contas.length+1),deps:[],prods:[]})}
   else if(a==='delConta'){if(!confirm('Excluir a conta "'+c.nome+'" e todos os seus dados?'))return;S.contas=S.contas.filter(x=>x!==c)}
+  else if(a==='impProd'){PID=p.id;$('f-pimp').click();return}
   else if(a==='addProd')c.prods.push(newProd());
   else if(a==='delProd'){if(!confirm('Remover "'+p.nome+'" e as vendas registradas?'))return;c.prods=c.prods.filter(x=>x!==p)}
   else if(a==='delDep')c.deps=c.deps.filter(d=>d.id!==b.closest('[data-d]').dataset.d);
@@ -1028,6 +1053,7 @@ $('b-open').onclick=()=>{const i=document.createElement('input');i.type='file';i
     if(confirm('Substituir os dados atuais pelo backup?')){S=d;persist();location.reload()}}catch(e){alert('Arquivo de backup inválido.')}};i.click()};
 // importação: botão, seleção de arquivos e arrastar-e-soltar
 $('b-imp').onclick=()=>$('f-imp').click();
+$('f-pimp').onchange=e=>{const f=[...e.target.files];e.target.value='';importaProd(f,PID)};
 $('f-imp').onchange=e=>{const f=[...e.target.files];e.target.value='';abrir(f)};
 document.addEventListener('dragover',e=>{if([...(e.dataTransfer?.types||[])].includes('Files')){e.preventDefault();document.body.classList.add('dz')}});
 document.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('dz')});
