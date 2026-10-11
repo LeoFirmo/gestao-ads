@@ -52,6 +52,7 @@ tr.det>td{background:var(--soft);white-space:normal;text-align:left;padding:14px
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .fg label{font-size:12px;color:var(--mute)}.fg input,.fg select{border-color:var(--line);background:var(--card)}
 .fg select{width:100%}
+.prev{font-size:12px;color:var(--mute);margin:8px 0 0;min-height:18px}
 .cal{max-width:290px}.calh{display:flex;justify-content:space-between;align-items:center;text-transform:capitalize}
 .calg{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;font-size:12px}
 .calg i{font-style:normal;color:var(--mute)}
@@ -95,10 +96,10 @@ tr.det>td{background:var(--soft);white-space:normal;text-align:left;padding:14px
 <p class="note">Receita = unidades × comissão · Lucro líquido = receita − taxas − gasto · ROI = líquido ÷ gasto · ROAS = receita ÷ gasto · Margem = líquido ÷ receita. Tudo é salvo automaticamente no navegador (abra sempre o mesmo arquivo no mesmo navegador); o backup .json é uma cópia de segurança.</p>
 </div>
 <script>
-const KEY='ads-lucro-v3',DAY=864e5;
+const KEY='ads-lucro-v3',DAY=864e5,BRTZ='America/Sao_Paulo';
 let S,tab='contas',cal={};
 for(const k of [KEY,'ads-lucro-v2','ads-lucro-v1']){try{S=JSON.parse(localStorage.getItem(k));if(S&&S.contas)break}catch(e){}}
-if(!S||!S.contas)S={v:3,taxa:0,contas:[]};
+if(!S||!S.contas)S={v:4,taxa:0,contas:[]};
 const $=id=>document.getElementById(id);
 const uid=()=>Math.random().toString(36).slice(2,9);
 const iso=()=>new Date().toLocaleDateString('sv');
@@ -113,18 +114,325 @@ const x2=n=>n==null?'–':n.toLocaleString('pt-BR',{maximumFractionDigits:2})+'x
 const nn=(n,d=1)=>n==null||!isFinite(n)?'–':n.toLocaleString('pt-BR',{maximumFractionDigits:d});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const cls=n=>!n?'':n>0?'pos':'neg';
-const PAISES={BR:['Brasil','America/Sao_Paulo'],PT:['Portugal','Europe/Lisbon'],'US-E':['EUA (Leste)','America/New_York'],'US-P':['EUA (Pacífico)','America/Los_Angeles'],ES:['Espanha','Europe/Madrid'],MX:['México','America/Mexico_City'],AR:['Argentina','America/Argentina/Buenos_Aires'],CO:['Colômbia','America/Bogota'],CL:['Chile','America/Santiago'],PE:['Peru','America/Lima'],GB:['Reino Unido','Europe/London'],FR:['França','Europe/Paris'],DE:['Alemanha','Europe/Berlin'],IT:['Itália','Europe/Rome'],CA:['Canadá','America/Toronto'],AU:['Austrália','Australia/Sydney'],JP:['Japão','Asia/Tokyo'],IN:['Índia','Asia/Kolkata'],AO:['Angola','Africa/Luanda']};
-const pname=k=>(PAISES[k]||PAISES.BR)[0];
-// converte a data/hora local do país da venda para o horário de Brasília
+const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+
+/* ================= PAÍSES, CIDADES E FUSOS HORÁRIOS =================
+   Formato: CÓDIGO-ISO:fuso1,fuso2,...  (a letra antes da "/" abrevia a região IANA)
+   a=America e=Europe s=Asia f=Africa p=Pacific t=Atlantic i=Indian u=Australia r=Arctic
+   O nome do país vem automaticamente em português (Intl.DisplayNames).
+   O nome da cidade é o nome do fuso IANA. Para cidades que usam o fuso de outra
+   (ex.: Rio de Janeiro usa America/Sao_Paulo) use CIDADES_EXTRAS logo abaixo. */
+const PFX={a:'America/',e:'Europe/',s:'Asia/',f:'Africa/',p:'Pacific/',t:'Atlantic/',i:'Indian/',u:'Australia/',r:'Arctic/'};
+const ZDATA=`AD:e/Andorra
+AE:s/Dubai
+AF:s/Kabul
+AG:a/Antigua
+AI:a/Anguilla
+AL:e/Tirane
+AM:s/Yerevan
+AO:f/Luanda
+AR:a/Argentina/Buenos_Aires,a/Argentina/Cordoba,a/Argentina/Salta,a/Argentina/Jujuy,a/Argentina/Tucuman,a/Argentina/Catamarca,a/Argentina/La_Rioja,a/Argentina/San_Juan,a/Argentina/Mendoza,a/Argentina/San_Luis,a/Argentina/Rio_Gallegos,a/Argentina/Ushuaia
+AS:p/Pago_Pago
+AT:e/Vienna
+AU:u/Lord_Howe,u/Hobart,u/Melbourne,u/Sydney,u/Broken_Hill,u/Brisbane,u/Lindeman,u/Adelaide,u/Darwin,u/Perth,u/Eucla
+AW:a/Aruba
+AX:e/Mariehamn
+AZ:s/Baku
+BA:e/Sarajevo
+BB:a/Barbados
+BD:s/Dhaka
+BE:e/Brussels
+BF:f/Ouagadougou
+BG:e/Sofia
+BH:s/Bahrain
+BI:f/Bujumbura
+BJ:f/Porto-Novo
+BL:a/St_Barthelemy
+BM:t/Bermuda
+BN:s/Brunei
+BO:a/La_Paz
+BQ:a/Kralendijk
+BR:a/Noronha,a/Belem,a/Fortaleza,a/Recife,a/Araguaina,a/Maceio,a/Bahia,a/Sao_Paulo,a/Campo_Grande,a/Cuiaba,a/Santarem,a/Porto_Velho,a/Boa_Vista,a/Manaus,a/Eirunepe,a/Rio_Branco
+BS:a/Nassau
+BT:s/Thimphu
+BW:f/Gaborone
+BY:e/Minsk
+BZ:a/Belize
+CA:a/St_Johns,a/Halifax,a/Glace_Bay,a/Moncton,a/Goose_Bay,a/Blanc-Sablon,a/Toronto,a/Iqaluit,a/Atikokan,a/Winnipeg,a/Resolute,a/Rankin_Inlet,a/Regina,a/Swift_Current,a/Edmonton,a/Cambridge_Bay,a/Inuvik,a/Creston,a/Dawson_Creek,a/Fort_Nelson,a/Whitehorse,a/Dawson,a/Vancouver
+CC:i/Cocos
+CD:f/Kinshasa,f/Lubumbashi
+CF:f/Bangui
+CG:f/Brazzaville
+CH:e/Zurich
+CI:f/Abidjan
+CK:p/Rarotonga
+CL:a/Santiago,a/Punta_Arenas,p/Easter
+CM:f/Douala
+CN:s/Shanghai,s/Urumqi
+CO:a/Bogota
+CR:a/Costa_Rica
+CU:a/Havana
+CV:t/Cape_Verde
+CW:a/Curacao
+CX:i/Christmas
+CY:s/Nicosia,s/Famagusta
+CZ:e/Prague
+DE:e/Berlin,e/Busingen
+DJ:f/Djibouti
+DK:e/Copenhagen
+DM:a/Dominica
+DO:a/Santo_Domingo
+DZ:f/Algiers
+EC:a/Guayaquil,p/Galapagos
+EE:e/Tallinn
+EG:f/Cairo
+EH:f/El_Aaiun
+ER:f/Asmara
+ES:e/Madrid,f/Ceuta,t/Canary
+ET:f/Addis_Ababa
+FI:e/Helsinki
+FJ:p/Fiji
+FK:t/Stanley
+FM:p/Chuuk,p/Pohnpei,p/Kosrae
+FO:t/Faroe
+FR:e/Paris
+GA:f/Libreville
+GB:e/London
+GD:a/Grenada
+GE:s/Tbilisi
+GF:a/Cayenne
+GG:e/Guernsey
+GH:f/Accra
+GI:e/Gibraltar
+GL:a/Nuuk,a/Danmarkshavn,a/Scoresbysund,a/Thule
+GM:f/Banjul
+GN:f/Conakry
+GP:a/Guadeloupe
+GQ:f/Malabo
+GR:e/Athens
+GS:t/South_Georgia
+GT:a/Guatemala
+GU:p/Guam
+GW:f/Bissau
+GY:a/Guyana
+HK:s/Hong_Kong
+HN:a/Tegucigalpa
+HR:e/Zagreb
+HT:a/Port-au-Prince
+HU:e/Budapest
+ID:s/Jakarta,s/Pontianak,s/Makassar,s/Jayapura
+IE:e/Dublin
+IL:s/Jerusalem
+IM:e/Isle_of_Man
+IN:s/Kolkata
+IO:i/Chagos
+IQ:s/Baghdad
+IR:s/Tehran
+IS:t/Reykjavik
+IT:e/Rome
+JE:e/Jersey
+JM:a/Jamaica
+JO:s/Amman
+JP:s/Tokyo
+KE:f/Nairobi
+KG:s/Bishkek
+KH:s/Phnom_Penh
+KI:p/Tarawa,p/Kanton,p/Kiritimati
+KM:i/Comoro
+KN:a/St_Kitts
+KP:s/Pyongyang
+KR:s/Seoul
+KW:s/Kuwait
+KY:a/Cayman
+KZ:s/Almaty,s/Qyzylorda,s/Qostanay,s/Aqtobe,s/Aqtau,s/Atyrau,s/Oral
+LA:s/Vientiane
+LB:s/Beirut
+LC:a/St_Lucia
+LI:e/Vaduz
+LK:s/Colombo
+LR:f/Monrovia
+LS:f/Maseru
+LT:e/Vilnius
+LU:e/Luxembourg
+LV:e/Riga
+LY:f/Tripoli
+MA:f/Casablanca
+MC:e/Monaco
+MD:e/Chisinau
+ME:e/Podgorica
+MF:a/Marigot
+MG:i/Antananarivo
+MH:p/Majuro,p/Kwajalein
+MK:e/Skopje
+ML:f/Bamako
+MM:s/Yangon
+MN:s/Ulaanbaatar,s/Hovd
+MO:s/Macau
+MP:p/Saipan
+MQ:a/Martinique
+MR:f/Nouakchott
+MS:a/Montserrat
+MT:e/Malta
+MU:i/Mauritius
+MV:i/Maldives
+MW:f/Blantyre
+MX:a/Mexico_City,a/Cancun,a/Merida,a/Monterrey,a/Matamoros,a/Chihuahua,a/Ciudad_Juarez,a/Ojinaga,a/Mazatlan,a/Bahia_Banderas,a/Hermosillo,a/Tijuana
+MY:s/Kuala_Lumpur,s/Kuching
+MZ:f/Maputo
+NA:f/Windhoek
+NC:p/Noumea
+NE:f/Niamey
+NF:p/Norfolk
+NG:f/Lagos
+NI:a/Managua
+NL:e/Amsterdam
+NO:e/Oslo
+NP:s/Kathmandu
+NR:p/Nauru
+NU:p/Niue
+NZ:p/Auckland,p/Chatham
+OM:s/Muscat
+PA:a/Panama
+PE:a/Lima
+PF:p/Tahiti,p/Marquesas,p/Gambier
+PG:p/Port_Moresby,p/Bougainville
+PH:s/Manila
+PK:s/Karachi
+PL:e/Warsaw
+PM:a/Miquelon
+PN:p/Pitcairn
+PR:a/Puerto_Rico
+PS:s/Gaza,s/Hebron
+PT:e/Lisbon,t/Madeira,t/Azores
+PW:p/Palau
+PY:a/Asuncion
+QA:s/Qatar
+RE:i/Reunion
+RO:e/Bucharest
+RS:e/Belgrade
+RU:e/Kaliningrad,e/Moscow,e/Kirov,e/Volgograd,e/Astrakhan,e/Saratov,e/Ulyanovsk,e/Samara,s/Yekaterinburg,s/Omsk,s/Novosibirsk,s/Barnaul,s/Tomsk,s/Novokuznetsk,s/Krasnoyarsk,s/Irkutsk,s/Chita,s/Yakutsk,s/Khandyga,s/Vladivostok,s/Ust-Nera,s/Magadan,s/Sakhalin,s/Srednekolymsk,s/Kamchatka,s/Anadyr
+RW:f/Kigali
+SA:s/Riyadh
+SB:p/Guadalcanal
+SC:i/Mahe
+SD:f/Khartoum
+SE:e/Stockholm
+SG:s/Singapore
+SH:t/St_Helena
+SI:e/Ljubljana
+SJ:r/Longyearbyen
+SK:e/Bratislava
+SL:f/Freetown
+SM:e/San_Marino
+SN:f/Dakar
+SO:f/Mogadishu
+SR:a/Paramaribo
+SS:f/Juba
+ST:f/Sao_Tome
+SV:a/El_Salvador
+SX:a/Lower_Princes
+SY:s/Damascus
+SZ:f/Mbabane
+TC:a/Grand_Turk
+TD:f/Ndjamena
+TF:i/Kerguelen
+TG:f/Lome
+TH:s/Bangkok
+TJ:s/Dushanbe
+TK:p/Fakaofo
+TL:s/Dili
+TM:s/Ashgabat
+TN:f/Tunis
+TO:p/Tongatapu
+TR:e/Istanbul
+TT:a/Port_of_Spain
+TV:p/Funafuti
+TW:s/Taipei
+TZ:f/Dar_es_Salaam
+UA:e/Kyiv,e/Simferopol
+UG:f/Kampala
+UM:p/Midway,p/Wake
+US:a/New_York,a/Detroit,a/Indiana/Indianapolis,a/Kentucky/Louisville,a/Chicago,a/Menominee,a/Denver,a/Boise,a/Phoenix,a/Los_Angeles,a/Anchorage,a/Juneau,a/Sitka,a/Nome,a/Adak,p/Honolulu
+UY:a/Montevideo
+UZ:s/Samarkand,s/Tashkent
+VA:e/Vatican
+VC:a/St_Vincent
+VE:a/Caracas
+VG:a/Tortola
+VI:a/St_Thomas
+VN:s/Ho_Chi_Minh
+VU:p/Efate
+WF:p/Wallis
+WS:p/Apia
+YE:s/Aden
+YT:i/Mayotte
+ZA:f/Johannesburg
+ZM:f/Lusaka
+ZW:f/Harare`;
+// Cidades que usam o fuso de outra. Para adicionar uma cidade, inclua ['Nome','Fuso/IANA'] no país certo.
+const CIDADES_EXTRAS={
+ BR:[['Rio de Janeiro',BRTZ],['Brasilia',BRTZ],['Belo Horizonte',BRTZ],['Curitiba',BRTZ],['Porto Alegre',BRTZ],['Florianopolis',BRTZ],['Goiania',BRTZ],['Vitoria',BRTZ],['Salvador','America/Bahia'],['Natal','America/Fortaleza'],['Sao Luis','America/Fortaleza'],['Teresina','America/Fortaleza'],['Joao Pessoa','America/Fortaleza'],['Aracaju','America/Maceio'],['Palmas','America/Araguaina'],['Macapa','America/Belem'],['Cuiaba','America/Cuiaba']],
+ US:[['Miami','America/New_York'],['Washington','America/New_York'],['Boston','America/New_York'],['Atlanta','America/New_York'],['Orlando','America/New_York'],['Tampa','America/New_York'],['Philadelphia','America/New_York'],['Pittsburgh','America/New_York'],['Charlotte','America/New_York'],['Houston','America/Chicago'],['Dallas','America/Chicago'],['Austin','America/Chicago'],['San Antonio','America/Chicago'],['New Orleans','America/Chicago'],['Nashville','America/Chicago'],['Minneapolis','America/Chicago'],['Salt Lake City','America/Denver'],['Seattle','America/Los_Angeles'],['San Francisco','America/Los_Angeles'],['San Diego','America/Los_Angeles'],['Las Vegas','America/Los_Angeles'],['San Jose','America/Los_Angeles']],
+ CA:[['Montreal','America/Toronto'],['Ottawa','America/Toronto'],['Quebec','America/Toronto'],['Calgary','America/Edmonton'],['Saskatoon','America/Regina']],
+ GB:[['Manchester','Europe/London'],['Edinburgh','Europe/London'],['Liverpool','Europe/London'],['Birmingham','Europe/London'],['Glasgow','Europe/London'],['Cardiff','Europe/London'],['Belfast','Europe/London']],
+ DE:[['Munich','Europe/Berlin'],['Frankfurt','Europe/Berlin'],['Hamburg','Europe/Berlin'],['Cologne','Europe/Berlin']],
+ FR:[['Lyon','Europe/Paris'],['Marseille','Europe/Paris'],['Nice','Europe/Paris']],
+ ES:[['Barcelona','Europe/Madrid'],['Valencia','Europe/Madrid'],['Sevilla','Europe/Madrid'],['Bilbao','Europe/Madrid']],
+ IT:[['Milan','Europe/Rome'],['Naples','Europe/Rome'],['Turin','Europe/Rome'],['Florence','Europe/Rome'],['Venice','Europe/Rome']],
+ PT:[['Porto','Europe/Lisbon'],['Faro','Europe/Lisbon'],['Coimbra','Europe/Lisbon']],
+ CH:[['Geneva','Europe/Zurich'],['Basel','Europe/Zurich']],
+ NL:[['Rotterdam','Europe/Amsterdam']],
+ AR:[['Rosario','America/Argentina/Cordoba']],
+ MX:[['Guadalajara','America/Mexico_City'],['Puebla','America/Mexico_City']],
+ CO:[['Medellin','America/Bogota'],['Cali','America/Bogota']],
+ CN:[['Beijing','Asia/Shanghai'],['Guangzhou','Asia/Shanghai'],['Shenzhen','Asia/Shanghai'],['Chengdu','Asia/Shanghai']],
+ IN:[['Mumbai','Asia/Kolkata'],['New Delhi','Asia/Kolkata'],['Bangalore','Asia/Kolkata'],['Chennai','Asia/Kolkata'],['Hyderabad','Asia/Kolkata']],
+ JP:[['Osaka','Asia/Tokyo'],['Kyoto','Asia/Tokyo']],
+ RU:[['Saint Petersburg','Europe/Moscow']],
+ AU:[['Canberra','Australia/Sydney'],['Gold Coast','Australia/Brisbane'],['Cairns','Australia/Brisbane']],
+ NZ:[['Wellington','Pacific/Auckland']],
+ AE:[['Abu Dhabi','Asia/Dubai']],
+ SA:[['Jeddah','Asia/Riyadh'],['Mecca','Asia/Riyadh']],
+ TR:[['Ankara','Europe/Istanbul'],['Izmir','Europe/Istanbul']],
+ ZA:[['Cape Town','Africa/Johannesburg'],['Pretoria','Africa/Johannesburg'],['Durban','Africa/Johannesburg']],
+ NG:[['Abuja','Africa/Lagos']]
+};
+// cidade sugerida ao escolher o país (se não listada, usa a primeira)
+const CDEF={BR:'Rio de Janeiro',US:'New York',AU:'Sydney',CA:'Toronto',RU:'Moscow',MX:'Mexico City',CN:'Shanghai',AR:'Buenos Aires',ID:'Jakarta',KZ:'Almaty',CL:'Santiago',EC:'Guayaquil',ES:'Madrid',PT:'Lisbon',GL:'Nuuk',MN:'Ulaanbaatar',PF:'Tahiti',KI:'Tarawa',FM:'Chuuk',MY:'Kuala Lumpur',UA:'Kyiv',CD:'Kinshasa'};
+const _tz={};const tzOk=z=>_tz[z]??=(()=>{try{new Intl.DateTimeFormat('en',{timeZone:z});return true}catch(e){return false}})();
+const CTRY={};
+(()=>{let rn=null;try{rn=new Intl.DisplayNames(['pt-BR'],{type:'region'})}catch(e){}
+  ZDATA.trim().split('\n').forEach(l=>{const[c,zs]=l.trim().split(':'),cid=[],seen=new Set();
+    const add=(n,z)=>{const k=norm(n);if(seen.has(k)||!tzOk(z))return;seen.add(k);cid.push({n,z})};
+    zs.split(',').forEach(x=>{const z=PFX[x[0]]+x.slice(2);add(z.split('/').pop().replace(/_/g,' '),z)});
+    (CIDADES_EXTRAS[c]||[]).forEach(([n,z])=>add(n,z));
+    if(!cid.length)return;
+    let nome=c;try{nome=(rn&&rn.of(c))||c}catch(e){}
+    CTRY[c]={nome,cid,def:(CDEF[c]&&cid.some(x=>x.n===CDEF[c]))?CDEF[c]:cid[0].n}})})();
+const PBN={};Object.entries(CTRY).forEach(([c,o])=>PBN[norm(o.nome)]=c);
+const pname=k=>CTRY[k]?CTRY[k].nome:k;
+const resPais=t=>PBN[norm(t)]||null;
+const resCid=(c,t)=>{const k=norm(t);return c&&CTRY[c]?CTRY[c].cid.find(x=>norm(x.n)===k)||null:null};
+const cidOpts=c=>CTRY[c]?CTRY[c].cid.slice().sort((a,b)=>a.n.localeCompare(b.n,'pt-BR')).map(x=>`<option value="${esc(x.n)}">`).join(''):'';
+document.body.insertAdjacentHTML('beforeend',`<datalist id="dl-pais">${Object.entries(CTRY).sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt-BR')).map(([c,o])=>`<option value="${esc(o.nome)}">`).join('')}</datalist>`);
+
+/* ================= HORÁRIOS =================
+   Você sempre informa o horário de Brasília (RJ). O sistema calcula o horário local da cidade. */
 function off(tz,ms){const g={};new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric'}).formatToParts(ms).forEach(x=>g[x.type]=+x.value);return Date.UTC(g.year,g.month-1,g.day,g.hour,g.minute,g.second)-ms}
-function toBR(v){const[y,m,d]=v.d.split('-').map(Number),[hh,mm]=(v.h||'12:00').split(':').map(Number),tz=(PAISES[v.pais]||PAISES.BR)[1],gs=Date.UTC(y,m-1,d,hh,mm);
-  let u=gs-off(tz,gs);u=gs-off(tz,u);const g=new Date(u+off('America/Sao_Paulo',u));
-  return {d:g.toISOString().slice(0,10),h:v.h?g.getUTCHours():null,m:g.getUTCMinutes()}}
+// instante (ms UTC) de uma data/hora que está no fuso tz
+function inst(d,h,tz){const[y,m,dd]=d.split('-').map(Number),[hh,mm]=(h||'12:00').split(':').map(Number),gs=Date.UTC(y,m-1,dd,hh,mm);let u=gs-off(tz,gs);u=gs-off(tz,u);return u}
+// venda registrada em Brasília -> data/hora local da cidade da venda
+function toLocal(v){const u=inst(v.d,v.h,BRTZ),g=new Date(u+off(v.z||BRTZ,u));return {d:g.toISOString().slice(0,10),h:v.h?g.getUTCHours():null,m:g.getUTCMinutes()}}
+
 // migração de versões anteriores
-if(S.v!==3){const old=S.v;S.contas.forEach(c=>c.prods.forEach(p=>{
+const OLD={BR:['BR','Rio de Janeiro',BRTZ],PT:['PT','Lisbon','Europe/Lisbon'],'US-E':['US','New York','America/New_York'],'US-P':['US','Los Angeles','America/Los_Angeles'],ES:['ES','Madrid','Europe/Madrid'],MX:['MX','Mexico City','America/Mexico_City'],AR:['AR','Buenos Aires','America/Argentina/Buenos_Aires'],CO:['CO','Bogota','America/Bogota'],CL:['CL','Santiago','America/Santiago'],PE:['PE','Lima','America/Lima'],GB:['GB','London','Europe/London'],FR:['FR','Paris','Europe/Paris'],DE:['DE','Berlin','Europe/Berlin'],IT:['IT','Rome','Europe/Rome'],CA:['CA','Toronto','America/Toronto'],AU:['AU','Sydney','Australia/Sydney'],JP:['JP','Tokyo','Asia/Tokyo'],IN:['IN','Kolkata','Asia/Kolkata'],AO:['AO','Luanda','Africa/Luanda']};
+if(S.v!==4){const old=S.v;S.contas.forEach(c=>c.prods.forEach(p=>{
   if(typeof p.vendas==='number'){p.sd=old===2?p.vendas:(p.vendas>0?1:0);if(!old)p.comissao=p.vendas?p.comissao||0:0;p.vendas=[]}
   p.sd=p.sd||0;p.vendas=p.vendas||[];p.imp=p.imp||0;p.cliques=p.cliques||0;p.cpc=p.cpc||0;
-  p.hist=(p.hist||[]).map(e=>({d:e.d,g:e.g}))}));S.v=3}
+  p.hist=(p.hist||[]).map(e=>({d:e.d,g:e.g}));
+  // vendas antigas guardavam o horário LOCAL do país; agora guardam o horário de Brasília
+  p.vendas=p.vendas.map(v=>{if(v.z)return v;const o=OLD[v.pais]||OLD.BR,u=inst(v.d,v.h,o[2]),g=new Date(u+off(BRTZ,u));
+    return {id:v.id,n:v.n,pais:o[0],cid:o[1],z:o[2],d:g.toISOString().slice(0,10),h:v.h?pad(g.getUTCHours())+':'+pad(g.getUTCMinutes()):''}})}));S.v=4}
 const un=p=>(p.sd||0)+p.vendas.reduce((a,v)=>a+v.n,0);
 function snap(p){const d=iso();p.hist=(p.hist||[]).filter(e=>e.d!==d);p.hist.push({d,g:p.gasto});p.hist.sort((a,b)=>a.d<b.d?-1:1)}
 // gasto acumulado ao fim do dia t (interpola entre os registros)
@@ -138,7 +446,7 @@ function calcConta(c){const dep=c.deps.reduce((a,d)=>a+d.valor,0);
 function met(p){
   if(!p.inicio)return null;
   const t=today0(),dias=Math.max(1,Math.round((t-D(p.inicio))/DAY)+1),cn=p.comissao*(1-(S.taxa||0)/100),u=un(p),g=p.gasto,rec=u*p.comissao;
-  const ss=p.vendas.map(v=>({d:D(toBR(v).d),n:v.n}));
+  const ss=p.vendas.map(v=>({d:D(v.d),n:v.n}));
   const w=n=>{const f=t-(n-1)*DAY,du=ss.filter(s=>s.d>=f&&s.d<=t).reduce((a,s)=>a+s.n,0),dg=g-at(p,f-DAY);return{u:du,g:dg,l:du*cn-dg,a:Math.min(n,dias)}};
   const w7=w(7),w30=w(30),r=S.base==='30'?w30:{u,g,a:dias};
   const unDia=r.u/r.a,gDia=r.g/r.a,lucroDia=unDia*cn-gDia,cl=p.cliques||0,im=p.imp||0,conv=cl?u/cl:null;
@@ -161,7 +469,8 @@ function calHtml(p,cs){
     g+=`<button class="day${cnt[k]?' has':''}${k===cs.sel?' sel':''}" data-a="selDay" data-day="${k}">${d}${cnt[k]?`<small>${cnt[k]}</small>`:''}</button>`}
   return `<div class="cal"><div class="calh"><button class="x" data-a="calPrev">‹</button><b>${first.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</b><button class="x" data-a="calNext">›</button></div><div class="calg">${g}</div></div>`}
 function detHtml(p){
-  const cs=cal[p.id],day=p.vendas.filter(v=>v.d===cs.sel).sort((a,b)=>(a.h||'')<(b.h||'')?-1:1);
+  const cs=cal[p.id],u0=S.ult&&CTRY[S.ult.p]&&resCid(S.ult.p,S.ult.c)?S.ult:{p:'BR',c:'Rio de Janeiro'},
+   day=p.vendas.filter(v=>v.d===cs.sel).sort((a,b)=>(a.h||'')<(b.h||'')?-1:1);
   return `<tr class="det" data-p="${p.id}"><td colspan="11"><div class="detg">
   <div><h3>Dados da campanha (opcional)</h3><div class="fg">
    <label>Impressões<input class="num" type="number" min="0" data-f="imp" value="${p.imp||''}"></label>
@@ -169,11 +478,14 @@ function detHtml(p){
    <label>CPC atual (R$)<input class="num" type="number" min="0" step="0.01" data-f="cpc" value="${p.cpc||''}"></label>
    <label>Vendas antigas, sem data<input class="num" type="number" min="0" data-f="sd" value="${p.sd||''}"></label></div></div>
   <div><h3>Calendário de vendas (clique no dia)</h3>${calHtml(p,cs)}</div>
-  <div><h3>Registrar venda</h3><div class="fg"><label>Dia<input type="date" data-n="date" value="${cs.sel}"></label><label>Horário (local do país)<input type="time" data-n="time"></label>
-   <label>País<select data-n="pais">${Object.entries(PAISES).map(([k,v])=>`<option value="${k}"${k===(S.paisPadrao||'BR')?' selected':''}>${v[0]}</option>`).join('')}</select></label>
+  <div><h3>Registrar venda</h3><div class="fg"><label>Dia (Brasília)<input type="date" data-n="date" value="${cs.sel}"></label><label>Horário de Brasília (RJ)<input type="time" data-n="time"></label>
+   <label>País (digite para buscar)<input list="dl-pais" data-n="pais" value="${esc(pname(u0.p))}" placeholder="Digite o país" autocomplete="off"></label>
+   <label>Cidade (digite para buscar)<input list="dl-c-${p.id}" data-n="cidade" value="${esc(u0.c)}" placeholder="Digite a cidade" autocomplete="off"></label>
    <label>Quantidade<input type="number" min="1" value="1" data-n="qty"></label></div>
+   <datalist id="dl-c-${p.id}">${cidOpts(u0.p)}</datalist>
+   <div class="prev" data-n="prev">Informe o horário de Brasília para ver o horário local da cidade.</div>
    <button class="primary" style="margin:8px 0" data-a="addSale">Registrar venda</button>
-   <h3>Vendas em ${bd(cs.sel)}</h3>${day.length?day.map(v=>{const b=toBR(v);return `<div class="sale" data-s="${v.id}"><span>${v.h||'--:--'} · ${pname(v.pais)} · ${v.n}x${v.h&&v.pais!=='BR'?` <span class="lbl">(Brasil ${pad(b.h)}:${pad(b.m)})</span>`:''}</span><button class="x" data-a="delSale" aria-label="Remover venda">×</button></div>`}).join(''):'<span class="lbl">Nenhuma venda neste dia.</span>'}</div>
+   <h3>Vendas em ${bd(cs.sel)}</h3>${day.length?day.map(v=>{const l=toLocal(v);return `<div class="sale" data-s="${v.id}"><span>${v.h||'--:--'} (Brasil) · ${esc(v.cid||'')}, ${esc(pname(v.pais))} · ${v.n}x${v.h?` <span class="lbl">(local ${pad(l.h)}:${pad(l.m)}${l.d!==v.d?' · '+bd(l.d).slice(0,5):''})</span>`:''}</span><button class="x" data-a="delSale" aria-label="Remover venda">×</button></div>`}).join(''):'<span class="lbl">Nenhuma venda neste dia.</span>'}</div>
   </div></td></tr>`}
 
 function viewContas(){
@@ -194,7 +506,7 @@ function viewContas(){
       <td><input type="date" data-f="inicio" value="${p.inicio}" style="width:140px" aria-label="Data em que subiu"></td>
       <td><input class="num" type="number" step="0.01" min="0" data-f="gasto" value="${p.gasto||''}" placeholder="0,00"></td>
       <td><input class="num" type="number" step="0.01" min="0" data-f="comissao" value="${p.comissao||''}" placeholder="0,00"></td>
-      <td><b>${un(p)}</b> <button class="mini" data-a="plus1" title="Registrar 1 venda agora">+1</button> <button class="mini${cal[p.id]?' on':''}" data-a="toggle" title="Calendário de vendas e dados da campanha">📅</button></td>
+      <td><b>${un(p)}</b> <button class="mini" data-a="plus1" title="Registrar 1 venda agora (horário de Brasília)">+1</button> <button class="mini${cal[p.id]?' on':''}" data-a="toggle" title="Calendário de vendas e dados da campanha">📅</button></td>
       <td>${brl(r.rec)}</td><td class="${cls(r.liq)}"><b>${brl(r.liq)}</b></td><td class="${cls(r.roi)}">${pct(r.roi)}</td><td>${x2(r.roas)}</td><td>${pct(r.marg)}</td>
       <td><button class="x" data-a="delProd" title="Remover produto" aria-label="Remover produto">×</button></td></tr>`+(cal[p.id]?detHtml(p):'')});
     h+=`</tbody>`;
@@ -206,19 +518,24 @@ function viewContas(){
   if(S.contas.length)h+=`<button class="primary" data-a="addConta">+ Nova conta</button>`;
   return h}
 
-function allSales(f){const o=[];S.contas.forEach(c=>c.prods.forEach(p=>{if(f&&f!==p.id)return;p.vendas.forEach(v=>o.push({...v,p,br:toBR(v)}))}));return o}
+function allSales(f){const o=[];S.contas.forEach(c=>c.prods.forEach(p=>{if(f&&f!==p.id)return;p.vendas.forEach(v=>o.push({...v,p,br:{d:v.d,h:v.h?+v.h.slice(0,2):null},loc:toLocal(v)}))}));return o}
 function locais(){
-  const ss=allSales(S.fp),by={},hb=Array(24).fill(0),dw=Array(7).fill(0),NM=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  ss.forEach(s=>{const o=by[s.pais]??={n:0,rec:0,hr:Array(24).fill(0)};o.n+=s.n;o.rec+=s.n*s.p.comissao;
-    if(s.h)o.hr[+s.h.slice(0,2)]+=s.n;if(s.br.h!=null)hb[s.br.h]+=s.n;dw[new Date(s.br.d+'T12:00').getDay()]+=s.n});
+  const ss=allSales(S.fp),by={},byc={},hb=Array(24).fill(0),dw=Array(7).fill(0),NM=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  ss.forEach(s=>{const rec=s.n*s.p.comissao,o=by[s.pais]??={n:0,rec:0,hr:Array(24).fill(0),hb:Array(24).fill(0)};o.n+=s.n;o.rec+=rec;
+    const q=byc[s.pais+'|'+s.cid]??={pais:s.pais,cid:s.cid||'–',z:s.z,n:0,rec:0,hr:Array(24).fill(0)};q.n+=s.n;q.rec+=rec;
+    if(s.h){o.hr[s.loc.h]+=s.n;q.hr[s.loc.h]+=s.n;o.hb[s.br.h]+=s.n}
+    if(s.br.h!=null)hb[s.br.h]+=s.n;dw[new Date(s.br.d+'T12:00').getDay()]+=s.n});
   const tot=ss.reduce((a,s)=>a+s.n,0),opts=`<option value="">Todos os produtos</option>`+S.contas.flatMap(c=>c.prods.map(p=>`<option value="${p.id}"${S.fp===p.id?' selected':''}>${esc(c.nome)} · ${esc(p.nome)}</option>`)).join('');
   let h=`<h2>Melhores locais e horários de venda</h2><div class="bar" style="margin-bottom:10px"><select id="fp">${opts}</select></div>`;
-  if(!tot)return h+`<div class="empty">Registre vendas no calendário (📅) com horário e país para ver esta análise.</div>`;
+  if(!tot)return h+`<div class="empty">Registre vendas no calendário (📅) com horário, país e cidade para ver esta análise.</div>`;
+  const pk=a=>{const mx=Math.max(...a);return mx?a.indexOf(mx):null},rg=k=>k==null?'–':hrs(k)+'–'+hrs((k+1)%24);
   const top=hb.map((n,i)=>[i,n]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).slice(0,3),dwi=dw.indexOf(Math.max(...dw));
-  const rows=Object.entries(by).sort((a,b)=>b[1].n-a[1].n).map(([k,o])=>{const mx=Math.max(...o.hr),pk=mx?o.hr.indexOf(mx):null;
-    return `<tr>${td(pname(k))}${td(o.n)}${td(pct(o.n/tot))}${td(brl(o.rec))}${td(pk==null?'–':hrs(pk)+'–'+hrs((pk+1)%24))}${td(pk==null?'–':hrs(toBR({d:iso(),h:pad(pk)+':00',pais:k}).h))}</tr>`}).join('');
-  return h+`<div class="stats" style="margin-bottom:12px">${stat('Melhor país',pname(Object.entries(by).sort((a,b)=>b[1].n-a[1].n)[0][0]))}${stat('Melhores horários (Brasília)',top.length?top.map(x=>hrs(x[0])+' ('+x[1]+')').join(' · '):'sem horários')}${stat('Melhor dia da semana',dw[dwi]?NM[dwi]+' ('+dw[dwi]+')':'–')}${stat('Vendas registradas',tot)}</div>`
-   +TB(['País','Vendas','% do total','Receita','Pico de vendas (hora local)','Equivale no Brasil'],rows)}
+  const lp=Object.entries(by).sort((a,b)=>b[1].n-a[1].n),lc=Object.values(byc).sort((a,b)=>b.n-a.n);
+  const rows=lp.map(([k,o])=>`<tr>${td(esc(pname(k)))}${td(o.n)}${td(pct(o.n/tot))}${td(brl(o.rec))}${td(rg(pk(o.hr)))}${td(rg(pk(o.hb)))}</tr>`).join('');
+  const rowsC=lc.map(o=>`<tr>${td(esc(o.cid))}${td(esc(pname(o.pais)))}${td(o.n)}${td(pct(o.n/tot))}${td(brl(o.rec))}${td(rg(pk(o.hr)))}${td(esc(o.z||''))}</tr>`).join('');
+  return h+`<div class="stats" style="margin-bottom:12px">${stat('Melhor país',esc(pname(lp[0][0])))}${stat('Melhor cidade',esc(lc[0].cid))}${stat('Melhores horários (Brasília)',top.length?top.map(x=>hrs(x[0])+' ('+x[1]+')').join(' · '):'sem horários')}${stat('Melhor dia da semana',dw[dwi]?NM[dwi]+' ('+dw[dwi]+')':'–')}${stat('Vendas registradas',tot)}</div>`
+   +TB(['País','Vendas','% do total','Receita','Pico de vendas (hora local)','Pico no horário de Brasília'],rows)
+   +`<h2>Por cidade</h2>`+TB(['Cidade','País','Vendas','% do total','Receita','Pico de vendas (hora local)','Fuso'],rowsC)}
 
 function viewAnalise(){
   const ms=[];let sem=0;
@@ -256,7 +573,7 @@ function viewGraficos(){
   const ps=[];S.contas.forEach(c=>c.prods.forEach(p=>{if(p.inicio)ps.push({c,p,m:met(p)})}));
   if(!ps.length)return `<div class="empty">Cadastre produtos com a data "No ar desde" para ver os gráficos.</div>`;
   const t=today0(),start=Math.min(...ps.map(x=>D(x.p.inicio))),ys=[],labs=[];
-  const pre=ps.map(({p,m})=>({p,cn:m.cn,sd:p.sd||0,ss:p.vendas.map(v=>({d:D(toBR(v).d),n:v.n}))}));
+  const pre=ps.map(({p,m})=>({p,cn:m.cn,sd:p.sd||0,ss:p.vendas.map(v=>({d:D(v.d),n:v.n}))}));
   for(let d=start;d<=t;d+=DAY){let l=0;pre.forEach(({p,cn,sd,ss})=>{if(d>=D(p.inicio))l+=(sd+ss.filter(s=>s.d<=d).reduce((a,s)=>a+s.n,0))*cn-at(p,d)});ys.push(l)}
   const ld=ps.reduce((a,x)=>a+x.m.lucroDia,0),proj=Array.from({length:30},(_,i)=>ys[ys.length-1]+ld*(i+1));
   const ss=allSales(),days=Array.from({length:30},(_,i)=>ago(29-i)),dc=Object.fromEntries(days.map(d=>[d,0])),hb=Array(24).fill(0),pa={};
@@ -285,6 +602,13 @@ const find=el=>S.contas.find(c=>c.id===el.closest('[data-c]').dataset.c);
 const prod=(c,el)=>c.prods.find(p=>p.id===el.closest('[data-p]').dataset.p);
 const addSale=(p,v)=>{p.vendas.push({id:uid(),...v});cal[p.id]&&(cal[p.id]={y:+v.d.slice(0,4),m:+v.d.slice(5,7)-1,sel:v.d})};
 const newProd=()=>({id:uid(),nome:'Novo produto',inicio:iso(),gasto:0,comissao:0,sd:0,imp:0,cliques:0,cpc:0,vendas:[],hist:[]});
+// mostra o horário local da cidade escolhida (sem recarregar a tela)
+function prevTxt(box){
+  const g=k=>box.querySelector('[data-n='+k+']'),out=g('prev');if(!out)return;
+  const pc=resPais(g('pais').value),ci=resCid(pc,g('cidade').value),d=g('date').value,h=g('time').value;
+  if(!ci){out.textContent='Escolha o país e a cidade da lista.';return}
+  if(!d||!h){out.textContent='Informe o horário de Brasília para ver o horário local de '+ci.n+'.';return}
+  const l=toLocal({d,h,z:ci.z});out.textContent=`Em ${ci.n}: ${pad(l.h)}:${pad(l.m)} (${bd(l.d)}) · fuso ${ci.z}`}
 
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-tab]');if(t){tab=t.dataset.tab;render();return}
@@ -300,19 +624,33 @@ document.addEventListener('click',e=>{
   else if(a==='toggle'){if(cal[p.id])delete cal[p.id];else cal[p.id]={y:new Date().getFullYear(),m:new Date().getMonth(),sel:iso()}}
   else if(a==='calPrev'||a==='calNext'){const s=cal[p.id],d=new Date(s.y,s.m+(a==='calNext'?1:-1),1);s.y=d.getFullYear();s.m=d.getMonth()}
   else if(a==='selDay')cal[p.id].sel=b.dataset.day;
-  else if(a==='plus1'){const n=new Date();addSale(p,{d:iso(),h:pad(n.getHours())+':'+pad(n.getMinutes()),pais:'BR',n:1})}
-  else if(a==='addSale'){const g=k=>b.closest('td').querySelector('[data-n='+k+']').value,d=g('date');
-    if(!d){alert('Escolha o dia da venda.');return}S.paisPadrao=g('pais');addSale(p,{d,h:g('time'),pais:g('pais'),n:Math.max(1,parseInt(g('qty'))||1)})}
+  else if(a==='plus1'){const u=Date.now(),g=new Date(u+off(BRTZ,u));addSale(p,{d:g.toISOString().slice(0,10),h:pad(g.getUTCHours())+':'+pad(g.getUTCMinutes()),pais:'BR',cid:'Rio de Janeiro',z:BRTZ,n:1})}
+  else if(a==='addSale'){const box=b.closest('td'),g=k=>box.querySelector('[data-n='+k+']').value,d=g('date'),pc=resPais(g('pais')),ci=resCid(pc,g('cidade'));
+    if(!d){alert('Escolha o dia da venda.');return}
+    if(!ci){alert('Escolha um país e uma cidade da lista.');return}
+    S.ult={p:pc,c:ci.n};addSale(p,{d,h:g('time'),pais:pc,cid:ci.n,z:ci.z,n:Math.max(1,parseInt(g('qty'))||1)})}
   else if(a==='delSale')p.vendas=p.vendas.filter(v=>v.id!==b.closest('[data-s]').dataset.s);
   else if(a==='exemplo'){
-    const P=(nome,i,gasto,comissao,imp,cliques,cpc,vendas)=>({...newProd(),nome,inicio:ago(i),gasto,comissao,imp,cliques,cpc,hist:[{d:iso(),g:gasto}],vendas:vendas.map(([o,h,pais,n])=>({id:uid(),d:ago(o),h,pais,n}))});
-    S.contas=[{id:uid(),nome:'Conta 1',deps:[{id:uid(),data:ago(14),valor:80},{id:uid(),data:ago(3),valor:100}],prods:[P('Produto A',12,100,113,5200,140,.71,[[9,'14:30','BR',1],[4,'21:10','PT',1],[1,'20:45','BR',1]]),P('Produto B',8,80,102,3100,90,.88,[[5,'10:20','BR',1],[2,'22:05','US-E',1]])]},
-     {id:uid(),nome:'Conta 2',deps:[{id:uid(),data:ago(6),valor:266}],prods:[P('Produto A',6,116,102,2800,75,1.55,[[3,'19:40','BR',2]])]}]}
+    // vendas: [dias atrás, horário de Brasília, país, cidade, quantidade]
+    const P=(nome,i,gasto,comissao,imp,cliques,cpc,vendas)=>({...newProd(),nome,inicio:ago(i),gasto,comissao,imp,cliques,cpc,hist:[{d:iso(),g:gasto}],vendas:vendas.map(([o,h,pais,cid,n])=>({id:uid(),d:ago(o),h,pais,cid,z:resCid(pais,cid).z,n}))});
+    S.contas=[{id:uid(),nome:'Conta 1',deps:[{id:uid(),data:ago(14),valor:80},{id:uid(),data:ago(3),valor:100}],prods:[P('Produto A',12,100,113,5200,140,.71,[[9,'14:30','BR','Rio de Janeiro',1],[4,'17:10','PT','Lisbon',1],[1,'20:45','BR','Sao Paulo',1]]),P('Produto B',8,80,102,3100,90,.88,[[5,'10:20','BR','Salvador',1],[2,'23:05','US','New York',1]])]},
+     {id:uid(),nome:'Conta 2',deps:[{id:uid(),data:ago(6),valor:266}],prods:[P('Produto A',6,116,102,2800,75,1.55,[[3,'19:40','BR','Rio de Janeiro',2]])]}]}
   upd();
 });
 document.addEventListener('change',e=>{
   if(e.target.id==='base'){S.base=e.target.value;upd();return}
   if(e.target.id==='fp'){S.fp=e.target.value;upd();return}
+  const n=e.target.dataset.n;
+  if(n==='pais'||n==='cidade'){
+    const box=e.target.closest('td');if(!box)return;
+    const pi=box.querySelector('[data-n=pais]'),ci=box.querySelector('[data-n=cidade]'),dl=box.querySelector('datalist');
+    if(n==='pais'){const c=resPais(pi.value);
+      if(!c){pi.value=pi.dataset.prev||pname('BR');return}
+      pi.value=pname(c);pi.dataset.prev=pi.value;dl.innerHTML=cidOpts(c);ci.value=CTRY[c].def;ci.dataset.prev=ci.value}
+    else{const c=resPais(pi.value),x=resCid(c,ci.value);
+      if(!x)ci.value=ci.dataset.prev||(c?CTRY[c].def:'');else{ci.value=x.n;ci.dataset.prev=x.n}}
+    prevTxt(box);return}
+  if(n==='date'||n==='time'){const box=e.target.closest('td');if(box)prevTxt(box);return}
   const f=e.target.dataset.f;if(!f)return;
   const c=find(e.target),v=e.target.value;
   if(f==='cnome')c.nome=v.trim()||c.nome;
@@ -322,6 +660,11 @@ document.addEventListener('change',e=>{
     else{p[f]=Math.max(0,['imp','cliques','sd'].includes(f)?parseInt(v)||0:parseFloat(v)||0);if(f==='gasto')snap(p)}}
   upd();
 });
+document.addEventListener('input',e=>{const n=e.target.dataset.n;
+  if(n==='date'||n==='time'||n==='pais'||n==='cidade'){const box=e.target.closest('td');if(box)prevTxt(box)}});
+// ao clicar no campo de país/cidade o texto é limpo para a lista mostrar todas as opções; se nada for escolhido, volta o valor anterior
+document.addEventListener('focusin',e=>{const n=e.target.dataset.n;if(n==='pais'||n==='cidade'){e.target.dataset.prev=e.target.value;e.target.value=''}});
+document.addEventListener('focusout',e=>{const n=e.target.dataset.n;if((n==='pais'||n==='cidade')&&!e.target.value){e.target.value=e.target.dataset.prev||'';const box=e.target.closest('td');if(box)prevTxt(box)}});
 $('taxa').addEventListener('change',e=>{S.taxa=Math.max(0,parseFloat(e.target.value)||0);upd()});
 $('b-save').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download='backup-lucro-ads-'+iso()+'.json';a.click()};
 $('b-open').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='.json';
