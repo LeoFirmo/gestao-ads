@@ -91,7 +91,7 @@ tr.det>td{background:var(--soft);white-space:normal;text-align:left;padding:14px
   </div>
 </header>
 <div class="status" id="status"></div>
-<div class="tabs"><button data-tab="contas">Contas e produtos</button><button data-tab="analise">Análises e previsões</button><button data-tab="graficos">Gráficos</button></div>
+<div class="tabs"><button data-tab="contas">Contas e produtos</button><button data-tab="analise">Análises e previsões</button><button data-tab="comparar">Comparar produtos</button><button data-tab="graficos">Gráficos</button></div>
 <div id="app"></div>
 <p class="note">Receita = unidades × comissão · Lucro líquido = receita − taxas − gasto · ROI = líquido ÷ gasto · ROAS = receita ÷ gasto · Margem = líquido ÷ receita. Tudo é salvo automaticamente no navegador (abra sempre o mesmo arquivo no mesmo navegador); o backup .json é uma cópia de segurança.</p>
 </div>
@@ -436,9 +436,10 @@ if(S.v!==4){const old=S.v;S.contas.forEach(c=>c.prods.forEach(p=>{
   p.vendas=p.vendas.map(v=>{if(v.z)return v;const o=OLD[v.pais]||OLD.BR,u=inst(v.d,v.h,o[2]),g=new Date(u+off(BRTZ,u));
     return {id:v.id,n:v.n,pais:o[0],cid:o[1],z:o[2],d:g.toISOString().slice(0,10),h:v.h?pad(g.getUTCHours())+':'+pad(g.getUTCMinutes()):''}})}));S.v=4}
 const un=p=>(p.sd||0)+p.vendas.reduce((a,v)=>a+v.n,0);
+const ini=p=>[p.inicio,...p.vendas.map(v=>v.d)].filter(Boolean).sort()[0];
 function snap(p){const d=iso();p.hist=(p.hist||[]).filter(e=>e.d!==d);p.hist.push({d,g:p.gasto});p.hist.sort((a,b)=>a.d<b.d?-1:1)}
 // gasto acumulado ao fim do dia t (interpola entre os registros)
-function at(p,t){const ini=D(p.inicio),h=p.hist||[];if(t<ini)return 0;if(!h.length)return p.gasto;let pr={t:ini-DAY,v:0};
+function at(p,t){const i0=D(ini(p)),h=p.hist||[];if(t<i0)return 0;if(!h.length)return p.gasto;let pr={t:i0-DAY,v:0};
   for(const e of h){const et=D(e.d);if(et<=t)pr={t:et,v:e.g};else return pr.v+(e.g-pr.v)*(t-pr.t)/(et-pr.t)}return pr.v}
 function calc(gasto,rec){const taxas=rec*(S.taxa||0)/100,liq=rec-taxas-gasto;
   return {gasto,rec,taxas,liq,roi:gasto?liq/gasto:null,roas:gasto?rec/gasto:null,marg:rec?liq/rec:null}}
@@ -447,12 +448,12 @@ function calcConta(c){const dep=c.deps.reduce((a,d)=>a+d.valor,0);
   return {...t,dep,saldo:dep-t.gasto,un:c.prods.reduce((a,p)=>a+un(p),0)}}
 function met(p){
   if(!p.inicio)return null;
-  const t=today0(),dias=Math.max(1,Math.round((t-D(p.inicio))/DAY)+1),cn=p.comissao*(1-(S.taxa||0)/100),u=un(p),g=p.gasto,rec=u*p.comissao;
+  const t=today0(),dias=Math.max(1,Math.round((t-D(ini(p)))/DAY)+1),cn=p.comissao*(1-(S.taxa||0)/100),u=un(p),g=p.gasto,rec=u*p.comissao;
   const ss=p.vendas.map(v=>({d:D(v.d),n:v.n}));
   const w=n=>{const f=t-(n-1)*DAY,du=ss.filter(s=>s.d>=f&&s.d<=t).reduce((a,s)=>a+s.n,0),dg=g-at(p,f-DAY);return{u:du,g:dg,l:du*cn-dg,a:Math.min(n,dias)}};
   const w7=w(7),w30=w(30),r=S.base==='30'?w30:{u,g,a:dias};
   const unDia=r.u/r.a,gDia=r.g/r.a,lucroDia=unDia*cn-gDia,cl=p.cliques||0,im=p.imp||0,conv=cl?u/cl:null;
-  return {dias,u,g,cn,rec,liq:u*cn-g,w7,w30,unDia,gDia,lucroDia,cpa:u?g/u:null,be:cn>0?Math.ceil(g/cn):null,roi:g?(u*cn-g)/g:null,marg:rec?(u*cn-g)/rec:null,
+  return {dias,base:r,ini:ini(p),u,g,cn,rec,liq:u*cn-g,w7,w30,unDia,gDia,lucroDia,cpa:u?g/u:null,be:cn>0?Math.ceil(g/cn):null,roi:g?(u*cn-g)/g:null,marg:rec?(u*cn-g)/rec:null,
     conf:dias<7||u<5?'Baixa':dias<30||u<20?'Média':'Alta',cl,im,ctr:im?cl/im:null,cpcMed:cl?g/cl:null,conv,cpcMax:conv!=null?conv*cn:null,epc:cl?u*cn/cl:null,cpm:im?g/im*1000:null}}
 function ver(m){
   if(m.u===0)return m.dias<7?['Coletando dados','']:['Sem vendas','neg'];
@@ -545,24 +546,56 @@ function viewAnalise(){
   if(!ms.length)return `<div class="empty">Informe a data em que cada produto subiu ("No ar desde") na aba Contas e produtos para ver as análises.</div>`;
   ms.sort((a,b)=>b.m.lucroDia-a.m.lucroDia);
   const sum=f=>ms.reduce((a,x)=>a+f(x.m),0),ld=sum(m=>m.lucroDia),l7=sum(m=>m.w7.l),l30=sum(m=>m.w30.l);
+  const poucos=ms.filter(x=>x.m.dias<7),antes=ms.filter(x=>x.m.ini<x.p.inicio),
+   aviso=(poucos.length||antes.length)?`<div class="note">${poucos.length?`<b class="neg">Atenção:</b> ${poucos.map(x=>esc(x.p.nome)).join(', ')} ${poucos.length>1?'têm':'tem'} menos de 7 dias de dados; a previsão projeta poucos dias para frente e pode variar muito. `:''}${antes.length?`${antes.length} produto(s) têm vendas anteriores à data "No ar desde"; usei a data da primeira venda como início.`:''}</div>`:'';
   let h=`<div class="bar" style="margin-bottom:12px"><label class="status">Ritmo usado nas previsões:
   <select id="base"><option value="total"${S.base!=='30'?' selected':''}>Média desde que subiu</option><option value="30"${S.base==='30'?' selected':''}>Últimos 30 dias</option></select></label></div>
   <section class="hero"><div><div class="lbl">Previsão de lucro nos próximos 12 meses (todos os produtos)</div><div class="big ${cls(ld)}">${brl(ld*365)}</div>
   <div class="sub">${brl(ld)} por dia · ${nn(sum(m=>m.unDia),2)} vendas/dia</div></div>
   <div class="stats">${stat('Previsão: próximo mês',brl(ld*30),cls(ld))}${stat('Previsão: trimestre',brl(ld*90),cls(ld))}${stat('Previsão: semestre',brl(ld*180),cls(ld))}
   ${stat('Real: últimos 7 dias (vendas)',nn(sum(m=>m.w7.u)))}${stat('Real: últimos 7 dias (lucro)',brl(l7),cls(l7))}${stat('Real: últimos 30 dias (vendas)',nn(sum(m=>m.w30.u)))}${stat('Real: últimos 30 dias (lucro)',brl(l30),cls(l30))}</div></section>
-  <h2>Desempenho por produto (ordenado por lucro/dia)</h2>`;
+  ${aviso}<h2>Desempenho por produto (ordenado por lucro/dia)</h2>`;
   h+=TB(['Produto','Conta','No ar desde','Dias','Vendas','Vendas 7d','Vendas 30d','Lucro 7d','Lucro 30d','CPA','Comissão líq.','ROI','Margem','Confiança','Veredito'],
    ms.map(({c,p,m})=>{const v=ver(m);return `<tr>${td(esc(p.nome))}${td(esc(c))}${td(bd(p.inicio))}${td(m.dias)}${td(m.u)}${td(nn(m.w7.u))}${td(nn(m.w30.u))}${td(brl(m.w7.l),cls(m.w7.l))}${td(brl(m.w30.l),cls(m.w30.l))}${td(m.cpa==null?'–':brl(m.cpa),m.cpa!=null&&m.cpa>m.cn?'neg':'')}${td(brl(m.cn))}${td(pct(m.roi),cls(m.roi))}${td(pct(m.marg),cls(m.marg))}${td(m.conf)}${td(`<span class="badge ${v[1]}">${v[0]}</span>`)}</tr>`}).join(''));
   h+=`<h2>Funil de tráfego (impressões → cliques → vendas)</h2>`+TB(['Produto','Impressões','Cliques','CTR','CPC médio','CPC atual','Conversão','CPC máximo (break-even)','Ganho por clique','CPM','Situação do CPC'],
    ms.map(({p,m})=>{const ok=p.cpc&&m.cpcMax!=null?(p.cpc<=m.cpcMax?['Dentro do limite','pos']:['Acima do limite','neg']):['–',''];
     return `<tr>${td(esc(p.nome))}${td(nn(m.im,0))}${td(nn(m.cl,0))}${td(pct(m.ctr))}${td(m.cpcMed==null?'–':brl(m.cpcMed))}${td(p.cpc?brl(p.cpc):'–')}${td(pct(m.conv))}${td(m.cpcMax==null?'–':brl(m.cpcMax))}${td(m.epc==null?'–':brl(m.epc),cls(m.epc))}${td(m.cpm==null?'–':brl(m.cpm))}${td(`<span class="badge ${ok[1]}">${ok[0]}</span>`)}</tr>`}).join(''));
-  h+=`<h2>Previsão de lucro por produto</h2>`+TB(['Produto','Conta','Vendas/dia','Gasto/dia','Lucro/dia','Mês (30d)','Trimestre (90d)','Semestre (180d)','Ano (365d)','Break-even (un.)'],
-   ms.map(({c,p,m})=>`<tr>${td(esc(p.nome))}${td(esc(c))}${td(nn(m.unDia,2))}${td(brl(m.gDia))}${td(brl(m.lucroDia),cls(m.lucroDia))}${[30,90,180,365].map(n=>td(brl(m.lucroDia*n),cls(m.lucroDia))).join('')}${td(m.be==null?'–':m.u+' / '+m.be,m.be!=null&&m.u>=m.be?'pos':'neg')}</tr>`).join(''),
-   `<tr>${td('Todos os produtos')}${td('')}${td(nn(sum(m=>m.unDia),2))}${td(brl(sum(m=>m.gDia)))}${td(brl(ld),cls(ld))}${[30,90,180,365].map(n=>td(brl(ld*n),cls(ld))).join('')}${td('')}</tr>`);
+  const hoje=new Date(),resto=new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate()-hoje.getDate(),udT=sum(m=>m.unDia),SEM=[7,14,21,28];
+  const fc=(ld,ud,n)=>{const q=Math.round(ud*n);return `${brl(ld*n)}<br><span class="lbl">${q} venda${q===1?'':'s'}</span>`};
+  const bs=m=>`${nn(m.unDia,2)}<br><span class="lbl">${nn(m.base.u,0)} venda${m.base.u===1?'':'s'} ÷ ${m.base.a} dia${m.base.a===1?'':'s'}</span>`;
+  h+=`<h2>Previsão semana a semana (acumulado)</h2>`+TB(['Produto','Conta','Semana 1 (7 dias)','Semana 2 (14 dias)','Semana 3 (21 dias)','Semana 4 (28 dias)',`Até o fim do mês (${resto} dias)`],
+   ms.map(({c,p,m})=>`<tr>${td(esc(p.nome))}${td(esc(c))}${[...SEM,resto].map(n=>td(fc(m.lucroDia,m.unDia,n),cls(m.lucroDia))).join('')}</tr>`).join(''),
+   `<tr>${td('Todos os produtos')}${td('')}${[...SEM,resto].map(n=>td(fc(ld,udT,n),cls(ld))).join('')}</tr>`);
+  h+=`<h2>Previsão de mês, trimestre, semestre e ano</h2>`+TB(['Produto','Conta','Vendas/dia','Gasto/dia','Lucro/dia','Mês (30d)','Trimestre (90d)','Semestre (180d)','Ano (365d)','Confiança','Break-even (un.)'],
+   ms.map(({c,p,m})=>`<tr>${td(esc(p.nome))}${td(esc(c))}${td(bs(m))}${td(brl(m.gDia))}${td(brl(m.lucroDia),cls(m.lucroDia))}${[30,90,180,365].map(n=>td(fc(m.lucroDia,m.unDia,n),cls(m.lucroDia))).join('')}${td(`<span class="badge ${m.conf==='Baixa'?'neg':m.conf==='Alta'?'pos':''}">${m.conf}</span>`)}${td(m.be==null?'–':m.u+' / '+m.be,m.be!=null&&m.u>=m.be?'pos':'neg')}</tr>`).join(''),
+   `<tr>${td('Todos os produtos')}${td('')}${td(nn(udT,2))}${td(brl(sum(m=>m.gDia)))}${td(brl(ld),cls(ld))}${[30,90,180,365].map(n=>td(fc(ld,udT,n),cls(ld))).join('')}${td('')}${td('')}</tr>`);
   h+=locais();
-  h+=`<p class="note"><b>Real</b> = o que de fato aconteceu nos últimos 7/30 dias, a partir das vendas registradas no calendário (por isso 30 dias nunca passa do total de vendas já feitas). <b>Previsão</b> = ritmo diário (escolhido acima) projetado para frente, mantendo comissão e investimento; é estimativa, não garantia, e a <b>Confiança</b> mostra o quanto há de dados (baixa: menos de 7 dias ou 5 vendas). <b>CPA</b> = gasto ÷ vendas (vermelho se passa da comissão líquida). <b>Break-even</b> = vendas feitas / necessárias para pagar o gasto. <b>CPC máximo</b> = conversão × comissão líquida: acima disso cada clique custa mais do que rende. <b>Escalar</b>: lucro positivo e ROI ≥ 100% · <b>Manter</b>: lucro positivo · <b>Revisar</b>: prejuízo no ritmo atual.${sem?` ${sem} produto(s) sem data "No ar desde" ficam de fora.`:''}</p>`;
+  h+=`<p class="note"><b>Real</b> = o que de fato aconteceu nos últimos 7/30 dias, a partir das vendas registradas no calendário (por isso 30 dias nunca passa do total de vendas já feitas). <b>Previsão</b> = ritmo diário (escolhido acima) projetado para frente, mantendo comissão e investimento; o ritmo é vendas ÷ dias desde a data mais antiga entre "No ar desde" e a primeira venda registrada. É estimativa, não garantia, e com poucos dias de dados oscila muito. A <b>Confiança</b> mostra o quanto há de dados (baixa: menos de 7 dias ou 5 vendas). <b>CPA</b> = gasto ÷ vendas (vermelho se passa da comissão líquida). <b>Break-even</b> = vendas feitas / necessárias para pagar o gasto. <b>CPC máximo</b> = conversão × comissão líquida: acima disso cada clique custa mais do que rende. <b>Escalar</b>: lucro positivo e ROI ≥ 100% · <b>Manter</b>: lucro positivo · <b>Revisar</b>: prejuízo no ritmo atual.${sem?` ${sem} produto(s) sem data "No ar desde" ficam de fora.`:''}</p>`;
   return h}
+
+const MT={liq:['Lucro líquido',m=>m.liq,brl],roi:['ROI',m=>m.roi,pct],lucroDia:['Lucro por dia',m=>m.lucroDia,brl],marg:['Margem',m=>m.marg,pct],roas:['ROAS',m=>m.g?m.rec/m.g:null,x2],u:['Vendas (unidades)',m=>m.u,v=>nn(v,0)],w7:['Lucro dos últimos 7 dias',m=>m.w7.l,brl],w30:['Lucro dos últimos 30 dias',m=>m.w30.l,brl]};
+function viewComparar(){
+  const L=[];S.contas.forEach(c=>c.prods.forEach(p=>{const m=met(p);if(m)L.push({c:c.nome,p,m,k:p.nome+' ('+c.nome+')'})}));
+  if(!L.length)return `<div class="empty">Cadastre produtos com a data "No ar desde" na aba Contas e produtos para compará-los.</div>`;
+  const key=MT[S.cmp]?S.cmp:'liq',[nm,fn,ff]=MT[key],val=x=>{const v=fn(x.m);return v==null||!isFinite(v)?null:v},fv=x=>val(x)==null?'–':ff(val(x));
+  const R=L.slice().sort((a,b)=>(val(b)??-Infinity)-(val(a)??-Infinity)),tl=L.reduce((a,x)=>a+x.m.liq,0);
+  const mx=(f)=>L.reduce((a,b)=>(f(b)??-Infinity)>(f(a)??-Infinity)?b:a),mn=L.reduce((a,b)=>b.m.liq<a.m.liq?b:a);
+  const card=(t,x,v,c)=>`<div class="card"><h3>${t}</h3><div style="font-size:18px;font-weight:700">${esc(x.p.nome)}</div><div class="lbl">${esc(x.c)}</div><div class="${c||''}" style="margin-top:6px;font-weight:600">${v}</div></div>`;
+  const a1=mx(x=>x.m.liq),a2=mx(x=>x.m.roi),a3=mx(x=>x.m.lucroDia),a4=mx(x=>x.m.u);
+  let h=`<div class="bar" style="margin-bottom:12px"><label class="status">Comparar e ordenar por: <select id="cmp">${Object.entries(MT).map(([k,v])=>`<option value="${k}"${k===key?' selected':''}>${v[0]}</option>`).join('')}</select></label></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:6px">${card('Mais lucrativo',a1,brl(a1.m.liq),cls(a1.m.liq))}${a2.m.roi!=null?card('Melhor ROI',a2,pct(a2.m.roi),cls(a2.m.roi)):''}${card('Maior lucro por dia',a3,brl(a3.m.lucroDia),cls(a3.m.lucroDia))}${card('Mais vendas',a4,a4.m.u+' un.')}${L.length>1?card(mn.m.liq<0?'Maior prejuízo':'Menor lucro',mn,brl(mn.m.liq),cls(mn.m.liq)):''}</div>
+  <h2>Ranking por ${nm.toLowerCase()}</h2>`;
+  h+=TB(['Produto','Conta','Gasto','Receita','Lucro líquido','% do lucro total','ROI','ROAS','Margem','Vendas','CPA','Lucro/dia','Lucro 7d','Lucro 30d','Veredito'],
+   R.map((x,i)=>{const m=x.m,v=ver(m),sh=tl>0?m.liq/tl:null;
+    return `<tr>${td(`<b>${i+1}º</b> ${esc(x.p.nome)}`)}${td(esc(x.c))}${td(brl(m.g))}${td(brl(m.rec))}${td(brl(m.liq),cls(m.liq))}${td(sh==null?'–':pct(sh))}${td(pct(m.roi),cls(m.roi))}${td(x2(m.g?m.rec/m.g:null))}${td(pct(m.marg),cls(m.marg))}${td(m.u)}${td(m.cpa==null?'–':brl(m.cpa))}${td(brl(m.lucroDia),cls(m.lucroDia))}${td(brl(m.w7.l),cls(m.w7.l))}${td(brl(m.w30.l),cls(m.w30.l))}${td(`<span class="badge ${v[1]}">${v[0]}</span>`)}</tr>`}).join(''));
+  h+=`<div class="grid2"><div class="card"><h3>${nm} por produto</h3>${hbars(R.map(x=>({l:x.k,v:val(x)??0,f:fv(x),c:cls(val(x))})))}</div>
+  <div class="card"><h3>Gasto × Receita por produto</h3>${hbars(R.flatMap(x=>[{l:x.k+' · gasto',v:x.m.g,f:brl(x.m.g),c:'neg'},{l:x.k+' · receita',v:x.m.rec,f:brl(x.m.rec),c:'pos'}]))}</div></div>`;
+  const G={};L.forEach(x=>{(G[norm(x.p.nome)]??=[]).push(x)});
+  const dup=Object.values(G).filter(a=>a.length>1);
+  if(dup.length)h+=`<h2>Mesmo produto em várias contas</h2>`+TB(['Produto','Contas','Gasto','Receita','Lucro líquido','ROI','Vendas','Melhor conta'],
+   dup.map(a=>{const g=a.reduce((t,x)=>t+x.m.g,0),r=a.reduce((t,x)=>t+x.m.rec,0),l=a.reduce((t,x)=>t+x.m.liq,0),b=a.reduce((p,q)=>q.m.liq>p.m.liq?q:p);
+    return `<tr>${td(esc(a[0].p.nome))}${td(a.length)}${td(brl(g))}${td(brl(r))}${td(brl(l),cls(l))}${td(pct(g?l/g:null),cls(l))}${td(a.reduce((t,x)=>t+x.m.u,0))}${td(esc(b.c)+' ('+brl(b.m.liq)+')')}</tr>`}).join(''));
+  return h+`<p class="note">Lucro líquido = receita − taxas − gasto de cada produto desde que subiu. Produtos com poucos dias ou poucas vendas (veja a Confiança na aba Análises) podem enganar: compare com cuidado antes de decidir escalar ou pausar.</p>`}
 
 const hbars=items=>{const mx=Math.max(...items.map(i=>Math.abs(i.v)),1);return items.map(i=>`<div class="hb"><span>${esc(i.l)}</span><span><i class="${i.v<0?'n':''}" style="width:${Math.max(Math.abs(i.v)/mx*100,2)}%"></i></span><span class="${i.c||''}">${i.f}</span></div>`).join('')};
 function barsV(vals,labs,fmt=nn){const W=640,H=190,pd=4,mx=Math.max(...vals,1),bw=(W-2*pd)/vals.length,st=Math.ceil(vals.length/12);
@@ -574,9 +607,9 @@ function line(ys,proj,l1,l2){const W=640,H=190,P=8,all=[...ys,...proj],mn=Math.m
 function viewGraficos(){
   const ps=[];S.contas.forEach(c=>c.prods.forEach(p=>{if(p.inicio)ps.push({c,p,m:met(p)})}));
   if(!ps.length)return `<div class="empty">Cadastre produtos com a data "No ar desde" para ver os gráficos.</div>`;
-  const t=today0(),start=Math.min(...ps.map(x=>D(x.p.inicio))),ys=[],labs=[];
+  const t=today0(),start=Math.min(...ps.map(x=>D(ini(x.p)))),ys=[],labs=[];
   const pre=ps.map(({p,m})=>({p,cn:m.cn,sd:p.sd||0,ss:p.vendas.map(v=>({d:D(v.d),n:v.n}))}));
-  for(let d=start;d<=t;d+=DAY){let l=0;pre.forEach(({p,cn,sd,ss})=>{if(d>=D(p.inicio))l+=(sd+ss.filter(s=>s.d<=d).reduce((a,s)=>a+s.n,0))*cn-at(p,d)});ys.push(l)}
+  for(let d=start;d<=t;d+=DAY){let l=0;pre.forEach(({p,cn,sd,ss})=>{if(d>=D(ini(p)))l+=(sd+ss.filter(s=>s.d<=d).reduce((a,s)=>a+s.n,0))*cn-at(p,d)});ys.push(l)}
   const ld=ps.reduce((a,x)=>a+x.m.lucroDia,0),proj=Array.from({length:30},(_,i)=>ys[ys.length-1]+ld*(i+1));
   const ss=allSales(),days=Array.from({length:30},(_,i)=>ago(29-i)),dc=Object.fromEntries(days.map(d=>[d,0])),hb=Array(24).fill(0),pa={};
   ss.forEach(s=>{if(s.br.d in dc)dc[s.br.d]+=s.n;if(s.br.h!=null)hb[s.br.h]+=s.n;pa[s.pais]=(pa[s.pais]||0)+s.n});
@@ -593,7 +626,7 @@ function viewGraficos(){
 function render(){
   $('taxa').value=S.taxa||0;
   document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
-  $('app').innerHTML=tab==='contas'?viewContas():tab==='analise'?viewAnalise():viewGraficos();
+  $('app').innerHTML=tab==='contas'?viewContas():tab==='analise'?viewAnalise():tab==='comparar'?viewComparar():viewGraficos();
 }
 function persist(){
   try{localStorage.setItem(KEY,JSON.stringify(S));$('status').textContent='Salvo automaticamente no navegador · '+new Date().toLocaleTimeString('pt-BR')}
@@ -642,6 +675,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   if(e.target.id==='base'){S.base=e.target.value;upd();return}
   if(e.target.id==='fp'){S.fp=e.target.value;upd();return}
+  if(e.target.id==='cmp'){S.cmp=e.target.value;upd();return}
   const n=e.target.dataset.n;
   if(n==='pais'||n==='cidade'){
     const box=e.target.closest('td');if(!box)return;
