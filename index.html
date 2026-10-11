@@ -22,8 +22,9 @@ button.mini{padding:2px 8px;font-size:12px;border-radius:8px}
 :focus-visible{outline:2px solid var(--brand);outline-offset:1px}
 input{font:inherit;color:inherit;border:1px solid transparent;background:transparent;border-radius:8px;padding:5px 6px;width:100%}
 input:hover{border-color:var(--line)}input:focus{border-color:var(--brand);background:var(--card);outline:0}
+input[readonly]{opacity:.75;cursor:not-allowed}
 input.num{text-align:right;width:96px}
-.tabs{display:flex;gap:6px;margin:12px 0 18px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 18px}
 .tabs button{border-radius:20px;padding:8px 18px}
 .status{font-size:12px;color:var(--mute)}
 .hero{background:linear-gradient(135deg,var(--card),var(--soft));border:1px solid var(--line);box-shadow:var(--sh);border-radius:20px;padding:24px 26px;display:grid;grid-template-columns:minmax(230px,1.1fr) 2fr;gap:24px;align-items:center;margin-bottom:22px}
@@ -76,6 +77,15 @@ tr.det>td{background:var(--soft);white-space:normal;text-align:left;padding:14px
 .hb{display:grid;grid-template-columns:130px 1fr 92px;gap:8px;align-items:center;font-size:13px;margin:6px 0}
 .hb i{display:block;height:12px;border-radius:6px;background:var(--brand)}.hb i.n{background:var(--neg)}
 .hb span:last-child{text-align:right}
+.hm{display:grid;grid-template-columns:34px repeat(24,1fr);gap:2px;font-size:10px;color:var(--mute);min-width:560px}
+.hm i{display:block;height:20px;border-radius:4px}.hm b{font-weight:400;text-align:center;line-height:20px}
+dialog{border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--ink);max-width:900px;width:94vw;max-height:90vh;overflow:auto;padding:20px 22px;box-shadow:var(--sh)}
+dialog::backdrop{background:rgba(10,15,30,.55)}
+dialog h2{margin:0 0 4px}
+.imp-i{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0;background:var(--soft)}
+.imp-i select{width:100%;margin-top:6px;background:var(--card)}
+.imp-i .t{font-weight:700}
+.dz{border:2px dashed var(--brand)!important}
 @media(max-width:700px){.hero{grid-template-columns:1fr}.hero .big{font-size:36px}.grid2{grid-template-columns:1fr}}
 </style>
 </head>
@@ -84,6 +94,8 @@ tr.det>td{background:var(--soft);white-space:normal;text-align:left;padding:14px
 <header>
   <h1>Controle de Lucro – Google Ads</h1>
   <div class="bar">
+    <button id="b-imp" class="primary" title="Selecione ZIPs/CSVs do Google Ads e a planilha de vendas (ou arraste para esta página)">⬆ Importar CSV / ZIP</button>
+    <input type="file" id="f-imp" accept=".csv,.zip,.txt" multiple hidden>
     <label class="status">Taxa/imposto sobre comissões <input id="taxa" type="number" min="0" step="0.1" style="width:64px;border-color:var(--line)"> %</label>
     <button id="b-theme" title="Alternar tema claro/escuro">☾</button>
     <button id="b-save">Baixar backup (.json)</button>
@@ -91,10 +103,11 @@ tr.det>td{background:var(--soft);white-space:normal;text-align:left;padding:14px
   </div>
 </header>
 <div class="status" id="status"></div>
-<div class="tabs"><button data-tab="contas">Contas e produtos</button><button data-tab="analise">Análises e previsões</button><button data-tab="comparar">Comparar produtos</button><button data-tab="graficos">Gráficos</button></div>
+<div class="tabs"><button data-tab="contas">Contas e produtos</button><button data-tab="ads">Campanhas (Ads)</button><button data-tab="analise">Análises e previsões</button><button data-tab="comparar">Comparar produtos</button><button data-tab="graficos">Gráficos</button></div>
 <div id="app"></div>
 <p class="note">Receita = unidades × comissão · Lucro líquido = receita − taxas − gasto · ROI = líquido ÷ gasto · ROAS = receita ÷ gasto · Margem = líquido ÷ receita. Tudo é salvo automaticamente no navegador (abra sempre o mesmo arquivo no mesmo navegador); o backup .json é uma cópia de segurança.</p>
 </div>
+<dialog id="dlg"></dialog>
 <script>
 const KEY='ads-lucro-v3',DAY=864e5,BRTZ='America/Sao_Paulo';
 let S,tab='contas',cal={};
@@ -479,7 +492,7 @@ function detHtml(p){
    <label>Impressões<input class="num" type="number" min="0" data-f="imp" value="${p.imp||''}"></label>
    <label>Cliques<input class="num" type="number" min="0" data-f="cliques" value="${p.cliques||''}"></label>
    <label>CPC atual (R$)<input class="num" type="number" min="0" step="0.01" data-f="cpc" value="${p.cpc||''}"></label>
-   <label>Vendas antigas, sem data<input class="num" type="number" min="0" data-f="sd" value="${p.sd||''}"></label></div></div>
+   <label>Vendas antigas, sem data<input class="num" type="number" min="0" data-f="sd" value="${p.sd||''}"></label></div>${p.ads?'<p class="prev">Impressões, cliques, CPC e gasto vêm do Google Ads (importados); importe de novo para atualizar.</p>':''}</div>
   <div><h3>Calendário de vendas (clique no dia)</h3>${calHtml(p,cs)}</div>
   <div><h3>Registrar venda</h3><div class="fg"><label>Dia (Brasília)<input type="date" data-n="date" value="${cs.sel}"></label><label>Horário de Brasília (RJ)<input type="time" data-n="time"></label>
    <label>País (digite para buscar)<input list="dl-pais" data-n="pais" value="${esc(pname(u0.p))}" placeholder="Digite o país" autocomplete="off"></label>
@@ -497,7 +510,7 @@ function viewContas(){
   let h=`<section class="hero"><div><div class="lbl">Lucro líquido total</div><div class="big ${cls(tot.liq)}">${brl(tot.liq)}</div>
   <div class="sub">ROI <b class="${cls(tot.roi)}">${pct(tot.roi)}</b> · ROAS <b>${x2(tot.roas)}</b> · Margem <b>${pct(tot.marg)}</b></div></div>
   <div class="stats">${stat('Total depositado',brl(T.dep))}${stat('Total gasto',brl(T.gasto))}${stat('Saldo nas contas',brl(saldo),saldo<0?'neg':'')}${stat('Receita (comissões)',brl(T.rec))}${stat('Unidades vendidas',T.un)}${stat('Taxas',brl(tot.taxas))}</div></section>`;
-  if(!S.contas.length)h+=`<div class="empty"><p>Nenhuma conta ainda. Crie uma conta e adicione os produtos dela.</p><button class="primary" data-a="addConta">+ Nova conta</button> <button data-a="exemplo">Carregar exemplo</button></div>`;
+  if(!S.contas.length)h+=`<div class="empty"><p>Nenhuma conta ainda. Crie uma conta e adicione os produtos dela, ou importe direto os CSVs/ZIPs.</p><button class="primary" data-a="addConta">+ Nova conta</button> <button class="primary" data-a="import">⬆ Importar CSV / ZIP</button> <button data-a="exemplo">Carregar exemplo</button></div>`;
   S.contas.forEach(c=>{
     const t=calcConta(c);
     h+=`<section class="conta" data-c="${c.id}"><div class="chead"><input class="nome" data-f="cnome" value="${esc(c.nome)}" aria-label="Nome da conta">
@@ -507,7 +520,7 @@ function viewContas(){
       const r=calc(p.gasto,un(p)*p.comissao);
       h+=`<tr data-p="${p.id}"><td><input data-f="pnome" value="${esc(p.nome)}" aria-label="Produto"></td>
       <td><input type="date" data-f="inicio" value="${p.inicio}" style="width:140px" aria-label="Data em que subiu"></td>
-      <td><input class="num" type="number" step="0.01" min="0" data-f="gasto" value="${p.gasto||''}" placeholder="0,00"></td>
+      <td><input class="num" type="number" step="0.01" min="0" data-f="gasto" value="${p.gasto||''}" placeholder="0,00"${p.ads?' readonly title="Vem do Google Ads (importado). Importe de novo para atualizar."':''}></td>
       <td><input class="num" type="number" step="0.01" min="0" data-f="comissao" value="${p.comissao||''}" placeholder="0,00"></td>
       <td><b>${un(p)}</b> <button class="mini" data-a="plus1" title="Registrar 1 venda agora (horário de Brasília)">+1</button> <button class="mini${cal[p.id]?' on':''}" data-a="toggle" title="Calendário de vendas e dados da campanha">📅</button></td>
       <td>${brl(r.rec)}</td><td class="${cls(r.liq)}"><b>${brl(r.liq)}</b></td><td class="${cls(r.roi)}">${pct(r.roi)}</td><td>${x2(r.roas)}</td><td>${pct(r.marg)}</td>
@@ -623,10 +636,302 @@ function viewGraficos(){
   ${sec('Vendas por país',pr.length?hbars(pr):'<span class="lbl">Registre vendas com país para ver este gráfico.</span>')}
   ${sec('Gasto × Receita por conta',hbars(S.contas.flatMap(c=>{const k=calcConta(c);return [{l:c.nome+' · gasto',v:k.gasto,f:brl(k.gasto),c:'neg'},{l:c.nome+' · receita',v:k.rec,f:brl(k.rec),c:'pos'}]})))}</div>`}
 
+/* ================= IMPORTAÇÃO (ZIP / CSV) =================
+   Reconhece cada arquivo pelo CONTEÚDO (cabeçalho), não pelo nome. */
+const MES={jan:0,fev:1,mar:2,abr:3,mai:4,jun:5,jul:6,ago:7,set:8,out:9,nov:10,dez:11},
+ DOWK=['dom','seg','ter','qua','qui','sex','sab'],NMD=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+ STOP=new Set(['get','site','shop','store','loja','buy','oficial','official','page','pagina','www','com','the','and','vercel','app','https','http','landing']),
+ TL={camp:'Campanha',serie:'Série temporal',hora:'Hora',dia:'Dia',diahora:'Dia×Hora',disp:'Dispositivos',idade:'Idade',sexo:'Sexo',sexoidade:'Sexo×Idade',kw:'Palavras-chave',palavra:'Palavras',termos:'Termos pesquisados',opt:'Otimização'};
+const toks=s=>norm(s).split(/[^a-z0-9]+/).filter(t=>t.length>=4&&!STOP.has(t)),slug=s=>norm(s).replace(/[^a-z0-9]/g,'');
+const pnum=(s,int)=>{s=String(s??'').replace(/R\$|\s|%/g,'');if(int)return parseInt(s.replace(/\D/g,''))||0;if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');return parseFloat(s)||0};
+const pdate=s=>{s=norm(s);let m=s.match(/(\d{1,2}) de ([a-z]{3})[a-z]*\.? de (\d{4})/);if(m&&MES[m[2]]!=null)return`${m[3]}-${pad(MES[m[2]]+1)}-${pad(+m[1])}`;
+  m=s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return`${m[3]}-${pad(+m[2])}-${pad(+m[1])}`;m=s.match(/\d{4}-\d{2}-\d{2}/);return m?m[0]:null};
+const phora=s=>{const m=String(s||'').match(/(\d{1,2}):(\d{2})/);return m?pad(+m[1])+':'+m[2]:''};
+const devC=s=>{const k=norm(s);return !k?'':/comput|desktop|laptop/.test(k)?'Computador':/smart|celular|mobile|phone|movel/.test(k)?'Celular':/tablet/.test(k)?'Tablet':/\btv\b|televis/.test(k)?'TV':String(s).trim()};
+const col=(h,...ks)=>{for(const k of ks){const i=h.findIndex(c=>c===k);if(i>=0)return i}for(const k of ks){const i=h.findIndex(c=>c.includes(k));if(i>=0)return i}return -1};
+
+function parseCSV(t){t=t.replace(/^\uFEFF/,'');const l1=t.split(/\r?\n/,1)[0];
+  const c=[',',';','\t'].map(s=>[s,l1.split(s).length]).sort((a,b)=>b[1]-a[1])[0][0],rows=[];let r=[],f='',q=false;
+  for(let i=0;i<t.length;i++){const ch=t[i];
+    if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===c){r.push(f);f=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;r.push(f);f='';rows.push(r);r=[]}
+    else f+=ch}
+  if(f!==''||r.length){r.push(f);rows.push(r)}
+  return rows.map(r=>r.map(x=>x.trim())).filter(r=>r.some(x=>x))}
+function dec(u8){
+  if(u8[0]===0xFF&&u8[1]===0xFE)return new TextDecoder('utf-16le').decode(u8);
+  if(u8[0]===0xFE&&u8[1]===0xFF)return new TextDecoder('utf-16be').decode(u8);
+  const t=new TextDecoder('utf-8').decode(u8);return t.includes('\uFFFD')?new TextDecoder('windows-1252').decode(u8):t}
+// leitor de ZIP próprio (sem bibliotecas): usa DecompressionStream do navegador
+async function unzip(buf){const dv=new DataView(buf),u8=new Uint8Array(buf),out=[];
+  let e=u8.length-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;
+  if(e<0)throw new Error('ZIP inválido');
+  const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);
+  for(let i=0;i<n;i++){
+    if(dv.getUint32(p,true)!==0x02014b50)break;
+    const met=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true),
+     name=new TextDecoder().decode(u8.subarray(p+46,p+46+nl));
+    p+=46+nl+el+cl;
+    if(name.endsWith('/')||name.includes('__MACOSX'))continue;
+    const ds=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true),data=u8.subarray(ds,ds+csz);let bytes;
+    if(met===0)bytes=data;
+    else if(met===8){if(typeof DecompressionStream==='undefined')throw new Error('Este navegador não abre ZIP; extraia os CSVs e selecione-os.');
+      bytes=new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer())}
+    else continue;
+    out.push({name,bytes})}
+  return out}
+
+/* ---- país / estado / cidade -> fuso horário (inglês e português) ---- */
+const EN={};try{const en=new Intl.DisplayNames(['en'],{type:'region'});Object.keys(CTRY).forEach(c=>{try{EN[norm(en.of(c))]=c}catch(e){}})}catch(e){}
+const ALIAS={eua:'US',usa:'US','united states of america':'US','estados unidos da america':'US',uk:'GB','great britain':'GB',holanda:'NL','the netherlands':'NL','republica tcheca':'CZ','czech republic':'CZ',turkey:'TR',turquia:'TR','south korea':'KR','coreia':'KR',russia:'RU','ivory coast':'CI','costa do marfim':'CI',burma:'MM','hong kong sar china':'HK','macau sar china':'MO'};
+const STX={
+ AU:[['Australia/Sydney','new south wales|nova gales do sul|australian capital territory|territorio da capital australiana|act|nsw'],['Australia/Melbourne','victoria|vic'],['Australia/Brisbane','queensland|terra da rainha|qld'],['Australia/Adelaide','south australia|australia meridional|sa'],['Australia/Perth','western australia|australia ocidental|wa'],['Australia/Hobart','tasmania|tas'],['Australia/Darwin','northern territory|territorio do norte|nt']],
+ US:[['America/New_York','maine|new hampshire|nova hampshire|vermont|massachusetts|rhode island|connecticut|new york|nova york|new jersey|nova jersey|pennsylvania|pensilvania|delaware|maryland|virginia|west virginia|virginia ocidental|north carolina|carolina do norte|south carolina|carolina do sul|georgia|florida|ohio|district of columbia|distrito de columbia'],['America/Detroit','michigan'],['America/Chicago','illinois|wisconsin|minnesota|iowa|missouri|arkansas|louisiana|luisiana|mississippi|alabama|oklahoma|texas|kansas|nebraska|north dakota|dakota do norte|south dakota|dakota do sul|tennessee'],['America/Indiana/Indianapolis','indiana'],['America/Kentucky/Louisville','kentucky'],['America/Denver','colorado|utah|wyoming|montana|new mexico|novo mexico|idaho'],['America/Phoenix','arizona'],['America/Los_Angeles','california|nevada|oregon|washington'],['America/Anchorage','alaska|alasca'],['Pacific/Honolulu','hawaii|havai']],
+ CA:[['America/Toronto','ontario|quebec|quebeque'],['America/Vancouver','british columbia|colombia britanica'],['America/Edmonton','alberta|northwest territories|territorios do noroeste'],['America/Winnipeg','manitoba'],['America/Regina','saskatchewan'],['America/Halifax','nova scotia|nova escocia|prince edward island|ilha do principe eduardo'],['America/Moncton','new brunswick|novo brunswick'],['America/St_Johns','newfoundland and labrador|newfoundland|terra nova e labrador|terra nova'],['America/Whitehorse','yukon'],['America/Iqaluit','nunavut']],
+ BR:[['America/Sao_Paulo','sao paulo|rio de janeiro|minas gerais|espirito santo|parana|santa catarina|rio grande do sul|goias|distrito federal'],['America/Rio_Branco','acre'],['America/Manaus','amazonas'],['America/Porto_Velho','rondonia'],['America/Boa_Vista','roraima'],['America/Cuiaba','mato grosso'],['America/Campo_Grande','mato grosso do sul'],['America/Bahia','bahia'],['America/Belem','para|amapa'],['America/Fortaleza','maranhao|ceara|piaui|rio grande do norte|paraiba'],['America/Recife','pernambuco'],['America/Maceio','alagoas|sergipe'],['America/Araguaina','tocantins']],
+ MX:[['America/Cancun','quintana roo'],['America/Tijuana','baja california'],['America/Hermosillo','sonora'],['America/Mazatlan','sinaloa|baja california sur|nayarit'],['America/Chihuahua','chihuahua']]};
+const STZ={};Object.entries(STX).forEach(([c,a])=>{STZ[c]={};a.forEach(([z,ns])=>ns.split('|').forEach(n=>STZ[c][norm(n)]=z))});
+const MULTI=new Set(['texas','florida','tennessee','kentucky','indiana','idaho','oregon','nebraska','kansas','michigan','north dakota','south dakota','dakota do norte','dakota do sul']);
+// retorna {p: código do país, z: fuso IANA, ap: aviso se o fuso é aproximado}
+function geo(cidade,estado,pais){
+  const kc=norm(cidade),ke=norm(estado),kp=norm(pais);
+  const c=PBN[kp]||EN[kp]||ALIAS[kp]||(CTRY[String(pais).trim().toUpperCase()]?String(pais).trim().toUpperCase():null);
+  if(!c)return {p:String(pais||'–').trim()||'–',z:BRTZ,ap:'país não reconhecido'};
+  const C=CTRY[c],x=C.cid.find(y=>norm(y.n)===kc),sz=(STZ[c]||{})[ke];let z=null,ap=null;
+  if(x&&(!sz||x.z===sz||MULTI.has(ke)))z=x.z;
+  else if(sz)z=sz;
+  else{const zs=[...new Set(C.cid.map(y=>y.z))];if(zs.length===1)z=zs[0];else{z=C.cid.find(y=>y.n===C.def).z;ap='fuso aproximado'}}
+  return {p:c,z,ap}}
+
+/* ---- classificação e leitura dos arquivos ---- */
+function classe(f){
+  const R=f.rows;let i=0;while(i<R.length-1&&R[i].filter(x=>x).length<2)i++;
+  if(!R[i])return null;
+  const h=R[i].map(norm),body=R.slice(i+1).filter(r=>!/^total/.test(norm(r[0]))&&r.some(x=>x)),has=(...k)=>k.every(x=>h.some(c=>c.includes(x)));
+  let t=null;
+  if(h.includes('site')&&h.includes('ip')&&has('cidade')&&(has('venda')||has('visita')))t='vendas';
+  else if(has('nome da campanha','custo'))t='camp';
+  else if(has('palavra-chave da rede'))t='kw';
+  else if(has('principais consultas'))t='palavra';
+  else if(h[0]==='pesquisar')t='termos';
+  else if(has('pontuacao de otimizacao'))t='opt';
+  else if(h[0]==='data'&&has('cpc'))t='serie';
+  else if(has('faixa de idade'))t=has('sexo')?'sexoidade':'idade';
+  else if(h[0]==='sexo')t='sexo';
+  else if(h[0]==='dispositivo'&&has('custo'))t='disp';
+  else if(has('dia','hora de inicio'))t='diahora';
+  else if(h[0]==='hora de inicio')t='hora';
+  else if(h[0]==='dia')t='dia';
+  const m=f.name.match(/(\d{4})\.(\d{2})\.(\d{2})-(\d{4})\.(\d{2})\.(\d{2})/);
+  return t&&{t,h,body,name:f.name,per:m?[`${m[1]}-${m[2]}-${m[3]}`,`${m[4]}-${m[5]}-${m[6]}`]:null}}
+
+function adsDe(cl){
+  const A={dias:{}};
+  cl.forEach(c=>{
+    if(c.per){A.ini=!A.ini||c.per[0]<A.ini?c.per[0]:A.ini;A.fim=!A.fim||c.per[1]>A.fim?c.per[1]:A.fim}
+    const B=c.body,g=(...k)=>col(c.h,...k),ci=g('custo'),cc=g('cliques'),im=g('impressoes'),pi=g('porcentagem');
+    switch(c.t){
+     case 'camp':{const ni=g('nome da campanha'),si=g('status da campanha');A.camps=B.map(r=>({n:r[ni],st:r[si],custo:pnum(r[ci]),cl:pnum(r[cc],1)}));A.nome=A.camps.map(x=>x.n).join(' + ');break}
+     case 'serie':B.forEach(r=>{const d=pdate(r[0]);if(d)A.dias[d]=[pnum(r[ci]),pnum(r[cc],1),pnum(r[im],1)]});break;
+     case 'hora':A.hora=Array(24).fill(0);B.forEach(r=>{const k=parseInt(r[0]);if(k>=0&&k<24)A.hora[k]=pnum(r[im],1)});break;
+     case 'dia':A.dow=Array(7).fill(0);B.forEach(r=>{const k=DOWK.indexOf(norm(r[0]).slice(0,3));if(k>=0)A.dow[k]=pnum(r[im],1)});break;
+     case 'diahora':A.hd=Array.from({length:7},()=>Array(24).fill(0));B.forEach(r=>{const k=DOWK.indexOf(norm(r[0]).slice(0,3)),hh=parseInt(r[1]);if(k>=0&&hh>=0&&hh<24)A.hd[k][hh]=pnum(r[im],1)});break;
+     case 'disp':A.disp=B.map(r=>({n:r[0],custo:pnum(r[ci]),imp:pnum(r[im],1),cl:pnum(r[cc],1)}));break;
+     case 'idade':A.idade=B.map(r=>({k:r[0],imp:pnum(r[im],1),p:pnum(r[pi])/100}));break;
+     case 'sexo':A.sexo=B.map(r=>({k:r[0],imp:pnum(r[im],1),p:pnum(r[pi])/100}));break;
+     case 'kw':{const tp=g('tipo de corresp'),st=g('status do criterio'),ct=g('ctr');A.kw=B.map(r=>({k:r[0],tp:r[tp],st:r[st],custo:pnum(r[ci]),cl:pnum(r[cc],1),ctr:pnum(r[ct])/100}));break}
+     case 'palavra':{const cv=g('conversoes'),qi=g('principais consultas');A.palavra=B.map(r=>({k:r[0],custo:pnum(r[ci]),cl:pnum(r[cc],1),imp:pnum(r[im],1),conv:pnum(r[cv]),q:String(r[qi]||'').replace(/^\(|\)$/g,'')}));break}
+     case 'termos':{const cv=g('conversoes');A.termos=B.map(r=>({k:r[0],custo:pnum(r[ci]),cl:pnum(r[cc],1),imp:pnum(r[im],1),conv:pnum(r[cv])}));break}
+     case 'opt':A.opt=(B[0]||[])[0];break}});
+  const ds=Object.keys(A.dias).sort();
+  if(ds.length){A.ini=A.ini||ds[0];A.fim=A.fim||ds[ds.length-1]}
+  return A}
+
+function vendasDe(c){
+  const h=c.h,ix={site:col(h,'site'),dt:col(h,'data abertura','data','abertura'),hr:col(h,'hora','horario','abertura'),ip:col(h,'ip'),cid:col(h,'cidade'),est:col(h,'estado'),pais:col(h,'pais'),
+    tipo:col(h,'tipo dispositivo','tipo'),org:col(h,'origem'),id:col(h,'id'),visita:col(h,'visita'),tempo:col(h,'tempo'),venda:col(h,'venda')};
+  if(ix.site<0||ix.dt<0)return {erro:'faltam as colunas Site ou Data'};
+  if(ix.hr===ix.dt)ix.hr=-1;
+  const G={},cache={};
+  c.body.forEach(r0=>{let r=r0;
+    // data e hora que vieram separadas por vírgula ("06/10/2026, 01:19:01") sem aspas
+    if(ix.hr<0&&/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(r[ix.dt]||'')&&/^\d{1,2}:\d{2}/.test(r[ix.dt+1]||'')){r=r.slice();r.splice(ix.dt,2,r[ix.dt]+' '+r[ix.dt+1])}
+    const site=(r[ix.site]||'').trim();if(!site)return;
+    const k=norm(site),o=G[k]??={nome:site,rows:[],host:'',sem:0},cell=i=>i>=0?(r[i]||''):'';
+    const d=pdate(cell(ix.dt));if(!d){o.sem++;return}
+    const h_=phora(cell(ix.dt)+' '+cell(ix.hr)),ck=[cell(ix.cid),cell(ix.est),cell(ix.pais)].join('|'),gg=cache[ck]??=geo(cell(ix.cid),cell(ix.est),cell(ix.pais));
+    if(!o.host)try{o.host=new URL(cell(ix.org)).hostname}catch(e){}
+    o.rows.push({sid:cell(ix.id),ip:cell(ix.ip),d,h:h_,cidade:cell(ix.cid),estado:cell(ix.est),pais:cell(ix.pais),tipo:cell(ix.tipo),tempo:parseFloat(cell(ix.tempo).replace(',','.'))||0,
+      sale:ix.venda>=0&&/^(sim|s|1|true|yes|vendeu)$/.test(norm(cell(ix.venda))),G:gg})});
+  return {G,semVenda:ix.venda<0}}
+
+/* ---- aplicar nos produtos ---- */
+const allProds=()=>S.contas.flatMap(c=>c.prods.map(p=>({c,p})));
+const findProd=id=>{for(const c of S.contas){const p=c.prods.find(x=>x.id===id);if(p)return p}return null};
+function aplicaAds(p,A){
+  const a=p.ads??={dias:{}},nv=!a.fim||(A.fim||'')>=a.fim,nd=Object.keys(A.dias).length;
+  Object.assign(a.dias,A.dias);
+  if(nv){['hora','dow','hd','disp','idade','sexo','kw','palavra','termos','opt','camps'].forEach(k=>{if(A[k])a[k]=A[k]});a.ini=A.ini;a.fim=A.fim}
+  a.camp=A.nome||a.camp;a.upd=iso();
+  const ds=Object.keys(a.dias).sort();
+  if(ds.length){let g=0,cl=0,im=0;
+    p.hist=ds.map(d=>{g+=a.dias[d][0];cl+=a.dias[d][1];im+=a.dias[d][2];return {d,g:+g.toFixed(2)}});
+    p.gasto=+g.toFixed(2);p.cliques=cl;p.imp=im;
+    const f=ds.find(d=>a.dias[d][2]>0||a.dias[d][0]>0)||ds[0];if(!p.inicio||f<p.inicio)p.inicio=f;
+    const r7=ds.slice(-7).reduce((t,d)=>[t[0]+a.dias[d][0],t[1]+a.dias[d][1]],[0,0]);
+    p.cpc=r7[1]?+(r7[0]/r7[1]).toFixed(2):(cl?+(g/cl).toFixed(2):p.cpc)}
+  else if(A.camps){p.gasto=+A.camps.reduce((t,x)=>t+x.custo,0).toFixed(2);p.cliques=A.camps.reduce((t,x)=>t+x.cl,0);snap(p);if(!p.inicio)p.inicio=iso()}
+  return nd}
+function aplicaVendas(p,g){
+  const V=p.vis??={ids:[],dia:{},hr:Array(24).fill(0),disp:{},pais:{},tp:[0,0],tpv:[0,0]},seen=new Set(V.ids),ss=new Set(p.vendas.map(v=>v.sid).filter(Boolean)),
+   R={lin:g.rows.length,nv:0,ns:0,rs:0,ap:0};
+  if(g.host)p.host=g.host;
+  g.rows.forEach(r=>{
+    const key=r.sid||[r.ip,r.d,r.h].join('|');
+    if(!seen.has(key)){seen.add(key);V.ids.push(key);R.nv++;V.dia[r.d]=(V.dia[r.d]||0)+1;if(r.h)V.hr[+r.h.slice(0,2)]++;
+      const dv=devC(r.tipo);if(dv)V.disp[dv]=(V.disp[dv]||0)+1;V.pais[r.G.p]=(V.pais[r.G.p]||0)+1;if(r.tempo>0){V.tp[0]+=r.tempo;V.tp[1]++}}
+    if(!r.sale)return;
+    if(r.sid?ss.has(r.sid):p.vendas.some(v=>v.d===r.d&&v.h===r.h&&v.cid===r.cidade&&v.pais===r.G.p)){R.rs++;return}
+    if(r.sid)ss.add(r.sid);
+    p.vendas.push({id:uid(),sid:r.sid||'',d:r.d,h:r.h,pais:r.G.p,cid:r.cidade||'–',z:r.G.z,n:1,uf:r.estado,dv:devC(r.tipo),tp:r.tempo});
+    R.ns++;if(r.G.ap)R.ap++;if(r.tempo>0){V.tpv[0]+=r.tempo;V.tpv[1]++}});
+  return R}
+
+/* ---- janela de importação ---- */
+let IMP=null;
+const dlg=()=>$('dlg'),openDlg=h=>{const d=dlg();d.innerHTML=h;if(!d.open)d.showModal()};
+const closeDlg=()=>{dlg().close();render()};
+async function abrir(list){
+  list=[...list];if(!list.length)return;
+  openDlg('<h2>Importar dados</h2><p class="lbl">Lendo arquivos…</p>');
+  try{
+    const files=[];
+    for(const f of list){const buf=await f.arrayBuffer();
+      if(/\.zip$/i.test(f.name)){for(const e of await unzip(buf)){const b=e.name.split('/').pop();if(/\.(csv|txt)$/i.test(b)&&!b.startsWith('.'))files.push({pkg:f.name,name:b,rows:parseCSV(dec(e.bytes))})}}
+      else{const m=f.name.match(/\((\d+)\)\.(csv|txt)$/i);files.push({pkg:'Arquivos soltos'+(m?' ('+m[1]+')':''),name:f.name,rows:parseCSV(dec(new Uint8Array(buf)))})}}
+    const pk={},VG={},ign=[],av=[];
+    files.forEach(f=>{const c=classe(f);if(!c){ign.push(f.name);return}
+      if(c.t==='vendas'){const r=vendasDe(c);if(r.erro){ign.push(f.name+' ('+r.erro+')');return}
+        if(r.semVenda)av.push('A planilha de vendas não tem coluna "Venda": só as visitas serão contadas.');
+        Object.entries(r.G).forEach(([k,g])=>{const o=VG[k]??={nome:g.nome,rows:[],host:'',sem:0};o.rows.push(...g.rows);o.host=o.host||g.host;o.sem+=g.sem})}
+      else(pk[f.pkg]??=[]).push(c)});
+    const AD=Object.entries(pk).map(([pkg,cl])=>{const A=adsDe(cl);return {pkg,A,nome:A.nome||pkg.replace(/\.zip$/i,''),tipos:cl.map(c=>c.t)}});
+    IMP={VG,AD,ign,av};
+    if(!AD.length&&!Object.keys(VG).length){openDlg(`<h2>Importar dados</h2><p>Não reconheci nenhum arquivo.${ign.length?' Ignorados: '+ign.map(esc).join(', '):''}</p><div class="bar"><button id="i-x">Fechar</button></div>`);$('i-x').onclick=closeDlg;return}
+    mostra()
+  }catch(e){openDlg(`<h2>Importar dados</h2><p class="warn">Erro ao ler: ${esc(e.message||e)}</p><div class="bar"><button id="i-x">Fechar</button></div>`);$('i-x').onclick=closeDlg}}
+
+function guessSite(k){const m=S.map?.['s:'+k];if(m&&findProd(m))return 'p:'+m;const f=allProds().find(x=>norm(x.p.nome)===k);return f?'p:'+f.p.id:'n:'+(S.contas[0]?.id||'')}
+function guessAds(nome,G){
+  const k=norm(nome),sk=slug(nome),P=allProds(),m=S.map?.['c:'+k];if(m&&findProd(m))return 'p:'+m;
+  let f=P.find(x=>x.p.camp&&norm(x.p.camp)===k)||P.find(x=>slug(x.p.nome)===sk)||P.find(x=>x.p.host&&slug(x.p.host).includes(sk));if(f)return 'p:'+f.p.id;
+  const g=Object.entries(G).find(([,v])=>v.host&&slug(v.host).includes(sk));if(g)return 'g:'+g[0];
+  const tk=toks(nome);let best=null,sc=0;
+  P.forEach(x=>{const t=new Set(toks(x.p.nome+' '+(x.p.host||'')+' '+(x.p.camp||'')));const s=tk.filter(y=>t.has(y)).length;if(s>sc){sc=s;best='p:'+x.p.id}});
+  Object.entries(G).forEach(([gk,v])=>{const t=new Set(toks(v.nome+' '+v.host));const s=tk.filter(y=>t.has(y)).length;if(s>sc){sc=s;best='g:'+gk}});
+  return best||'n:'+(S.contas[0]?.id||'')}
+function optsHtml(def,G,rotulo){
+  return allProds().map(x=>`<option value="p:${x.p.id}"${def==='p:'+x.p.id?' selected':''}>${esc(x.c.nome)} · ${esc(x.p.nome)}</option>`).join('')
+   +Object.entries(G||{}).map(([k,v])=>`<option value="g:${k}"${def==='g:'+k?' selected':''}>Mesmo produto de «${esc(v.nome)}» (planilha de vendas)</option>`).join('')
+   +(S.contas.length?S.contas.map((c,i)=>`<option value="n:${c.id}"${def==='n:'+c.id?' selected':''}>➕ Criar produto «${esc(rotulo)}» em ${esc(c.nome)}</option>`).join(''):`<option value="n:" selected>➕ Criar conta e produto «${esc(rotulo)}»</option>`)
+   +`<option value="x">Ignorar estes dados</option>`}
+function mostra(){
+  const {VG,AD,ign,av}=IMP;let h='<h2>Importar dados</h2><p class="lbl">Confira a ligação de cada arquivo com um produto e clique em Importar. Essa escolha fica salva: nas próximas vezes a ligação é automática.</p>';
+  Object.entries(VG).forEach(([k,g])=>{
+    const nS=g.rows.filter(r=>r.sale).length,ap=g.rows.filter(r=>r.G.ap).length,sp=[...new Set(g.rows.filter(r=>r.G.ap==='país não reconhecido').map(r=>r.pais))];
+    h+=`<div class="imp-i"><div class="t">📋 Planilha de vendas · site «${esc(g.nome)}»</div><div class="lbl">${g.rows.length} linhas (visitas) · ${nS} marcadas como venda${g.host?' · '+esc(g.host):''}${ap?` · ${ap} com fuso aproximado (estado/cidade sem fuso exato)`:''}${sp.length?` · <span class="warn">país não reconhecido: ${sp.map(esc).join(', ')} (usei Brasília)</span>`:''}${g.sem?` · <span class="warn">${g.sem} linhas sem data foram ignoradas</span>`:''}</div>
+    <select data-k="s:${k}">${optsHtml(guessSite(k),null,g.nome)}</select></div>`});
+  AD.forEach((a,i)=>{const ds=Object.keys(a.A.dias).sort(),cu=ds.reduce((t,d)=>t+a.A.dias[d][0],0)||(a.A.camps||[]).reduce((t,x)=>t+x.custo,0),cl=ds.reduce((t,d)=>t+a.A.dias[d][1],0)||(a.A.camps||[]).reduce((t,x)=>t+x.cl,0);
+    h+=`<div class="imp-i"><div class="t">📊 Google Ads · campanha «${esc(a.nome)}»</div><div class="lbl">${a.A.ini?bd(a.A.ini)+' a '+bd(a.A.fim)+' · ':''}gasto ${brl(cu)} · ${cl} cliques · ${ds.length} dias na série${(a.A.camps||[]).length>1?' · <span class="warn">'+a.A.camps.length+' campanhas no mesmo arquivo (tratadas como uma)</span>':''}<br>Arquivos reconhecidos: ${[...new Set(a.tipos)].map(t=>TL[t]).join(', ')}${ds.length?'':' · <span class="warn">sem Série temporal: gasto/dia indisponível</span>'}</div>
+    <select data-k="a:${i}">${optsHtml(guessAds(a.nome,VG),VG,a.nome)}</select></div>`});
+  if(ign.length)h+=`<p class="note">Arquivos não reconhecidos (ignorados): ${ign.map(esc).join(', ')}</p>`;
+  av.forEach(x=>h+=`<p class="note warn">${esc(x)}</p>`);
+  h+=`<div class="bar" style="margin-top:12px"><button id="i-ok" class="primary">Importar</button><button id="i-x">Cancelar</button></div>`;
+  openDlg(h);$('i-x').onclick=()=>{IMP=null;dlg().close()};
+  $('i-ok').onclick=()=>{const sel={};dlg().querySelectorAll('select[data-k]').forEach(s=>sel[s.dataset.k]=s.value);aplicarImport(sel)}}
+
+function aplicarImport(sel){
+  const {VG,AD}=IMP,out=[],pid={};S.map??={};
+  const mk=(v,nome)=>{if(!v||v==='x')return null;const t=v[0];
+    if(t==='p')return findProd(v.slice(2));
+    if(t==='g')return pid[v.slice(2)]||null;
+    let c=S.contas.find(x=>x.id===v.slice(2))||S.contas[0];if(!c){c={id:uid(),nome:'Conta 1',deps:[],prods:[]};S.contas.push(c)}
+    const p={...newProd(),nome};c.prods.push(p);return p};
+  Object.entries(VG).forEach(([k,g])=>{const p=mk(sel['s:'+k],g.nome);pid[k]=p;
+    if(!p){out.push(['—',`${esc(g.nome)}: ignorado`]);return}
+    S.map['s:'+k]=p.id;const r=aplicaVendas(p,g);
+    out.push(['✔',`<b>${esc(p.nome)}</b> (planilha de vendas): <b>+${r.ns}</b> vendas novas${r.rs?` (${r.rs} já estavam registradas)`:''}, <b>+${r.nv}</b> visitas novas de ${r.lin} linhas${r.ap?` · ${r.ap} venda(s) com fuso aproximado`:''}`])});
+  AD.forEach((a,i)=>{const p=mk(sel['a:'+i],a.nome);
+    if(!p){out.push(['—',`${esc(a.nome)}: ignorado`]);return}
+    S.map['c:'+norm(a.nome)]=p.id;p.camp=a.nome;const n=aplicaAds(p,a.A);
+    out.push(['✔',`<b>${esc(p.nome)}</b> (Google Ads «${esc(a.nome)}»): ${n} dias atualizados · gasto total agora ${brl(p.gasto)} · ${p.cliques} cliques`])});
+  const first=AD.map((a,i)=>mk(sel['a:'+i]&&sel['a:'+i].replace(/^n:.*/,'x'),a.nome)).find(Boolean)||Object.values(pid).find(Boolean);
+  if(first)S.fa=first.id;
+  persist();render();
+  openDlg(`<h2>Importação concluída</h2>${out.map(o=>`<p style="margin:6px 0">${o[0]} ${o[1]}</p>`).join('')}<p class="note">Falta apenas informar a <b>comissão por venda</b> de cada produto novo (aba Contas e produtos) para calcular receita e lucro.</p><div class="bar" style="margin-top:12px"><button id="i-v" class="primary">Ver campanhas</button><button id="i-x">Fechar</button></div>`);
+  IMP=null;$('i-x').onclick=closeDlg;$('i-v').onclick=()=>{tab='ads';closeDlg()}}
+
+/* ================= ABA CAMPANHAS (ADS) ================= */
+function viewAds(){
+  const L=[];S.contas.forEach(c=>c.prods.forEach(p=>{if(p.ads||p.vis)L.push({c,p})}));
+  if(!L.length)return `<div class="empty"><p>Nenhum dado importado ainda. Importe o ZIP do Google Ads de uma campanha e/ou a planilha de vendas.</p><button class="primary" data-a="import">⬆ Importar CSV / ZIP</button></div>`;
+  const {c,p}=L.find(x=>x.p.id===S.fa)||L[0],A=p.ads||{},V=p.vis,cn=p.comissao*(1-(S.taxa||0)/100),dm=A.dias||{},ds=Object.keys(dm).sort(),w0=ds[0],w1=ds[ds.length-1],inW=d=>!ds.length||(d>=w0&&d<=w1);
+  let custo=0,cl=0,imp=0;ds.forEach(d=>{custo+=dm[d][0];cl+=dm[d][1];imp+=dm[d][2]});
+  const sv=p.vendas.filter(s=>inW(s.d)),vend=sv.reduce((a,s)=>a+s.n,0),vis=V?Object.entries(V.dia).filter(([d])=>inW(d)).reduce((a,x)=>a+x[1],0):0;
+  const rec=vend*cn,lucro=rec-custo,ctr=imp?cl/imp:null,cpcM=cl?custo/cl:null,conv=cl?vend/cl:null,cpa=vend?custo/vend:null,cpcMax=conv?conv*cn:null;
+  let h=`<div class="bar" style="margin-bottom:12px"><select id="fa">${L.map(x=>`<option value="${x.p.id}"${x.p.id===p.id?' selected':''}>${esc(x.c.nome)} · ${esc(x.p.nome)}</option>`).join('')}</select><button data-a="import">⬆ Importar mais dados</button>
+   <span class="status">${ds.length?`Anúncios: ${bd(w0)} a ${bd(w1)} (${ds.length} dias)`:'Sem dados de anúncios'}${p.camp?` · campanha ${esc(p.camp)}`:''}${A.opt?` · pontuação de otimização ${esc(A.opt)}`:''}${A.camps&&A.camps[0]&&A.camps[0].st?` · ${esc(A.camps[0].st)}`:''}</span></div>`;
+  if(!p.comissao)h+=`<div class="note"><b class="neg">Falta a comissão por venda deste produto</b> (aba Contas e produtos): sem ela receita e lucro aparecem zerados.</div>`;
+  h+=`<section class="hero"><div><div class="lbl">Lucro no período dos anúncios</div><div class="big ${cls(lucro)}">${brl(lucro)}</div><div class="sub">${vend} venda${vend===1?'':'s'} × ${brl(cn)} − ${brl(custo)} de gasto</div></div>
+  <div class="stats">${stat('Gasto (Ads)',brl(custo))}${stat('Impressões',nn(imp,0))}${stat('Cliques',nn(cl,0))}${stat('CTR',pct(ctr))}${stat('CPC médio',cpcM==null?'–':brl(cpcM))}${stat('Conversão (vendas ÷ cliques)',pct(conv))}${stat('CPA (custo por venda)',cpa==null?'–':brl(cpa),cpa!=null&&cpa>cn?'neg':'')}${stat('CPC máximo (break-even)',cpcMax==null?'–':brl(cpcMax))}</div></section>`;
+  // funil
+  const tp=V&&V.tp[1]?V.tp[0]/V.tp[1]:null,tpv=V&&V.tpv[1]?V.tpv[0]/V.tpv[1]:null;
+  h+=`<h2>Funil: anúncio → site → venda</h2><div class="stats">${stat('Impressões',nn(imp,0))}${stat('Cliques',nn(cl,0),'')}${stat('Visitas no site',V?nn(vis,0):'sem planilha')}${stat('Vendas',vend)}
+   ${stat('Visitas ÷ cliques',V&&cl?pct(vis/cl):'–')}${stat('Vendas ÷ visitas',V&&vis?pct(vend/vis):'–')}${stat('Tempo médio na página',tp==null?'–':nn(tp,0)+'s')}${stat('Tempo médio de quem comprou',tpv==null?'–':nn(tpv,0)+'s')}</div>
+   <p class="note">Visitas ÷ cliques bem abaixo de 100% indica cliques que não chegaram a carregar a página (fecharam antes, bloqueadores, página lenta) ou falha no rastreio da planilha. Acima de 100% indica visitas de outras origens. Visitas contam só até o último upload da planilha de vendas.</p>`;
+  // diário
+  if(ds.length){const last=ds.slice(-45),lb=last.map(d=>d.slice(8)+'/'+d.slice(5,7)),vd=d=>V?(V.dia[d]||0):0,sd=d=>p.vendas.filter(s=>s.d===d).reduce((a,s)=>a+s.n,0);
+    h+=`<h2>Dia a dia</h2><div class="grid2"><div class="card"><h3>Gasto por dia</h3>${barsV(last.map(d=>dm[d][0]),lb,brl)}</div><div class="card"><h3>Cliques por dia</h3>${barsV(last.map(d=>dm[d][1]),lb)}</div>${V?`<div class="card"><h3>Visitas no site por dia</h3>${barsV(last.map(vd),lb)}</div>`:''}</div>`;
+    h+=TB(['Dia','Gasto','Impressões','Cliques','CPC','Visitas','Vendas','Lucro do dia'],ds.slice(-21).reverse().map(d=>{const x=dm[d],v=sd(d),l=v*cn-x[0];return `<tr>${td(bd(d))}${td(brl(x[0]))}${td(nn(x[2],0))}${td(nn(x[1],0))}${td(x[1]?brl(x[0]/x[1]):'–')}${td(V?vd(d):'–')}${td(v)}${td(brl(l),cls(l))}</tr>`}).join(''))}
+  // horários
+  if(A.hora||A.hd||V){const sh=Array(24).fill(0);sv.forEach(s=>{if(s.h)sh[+s.h.slice(0,2)]+=s.n});
+    const top=(a,n=3)=>a.map((v,i)=>[i,v]).filter(x=>x[1]>0).sort((x,y)=>y[1]-x[1]).slice(0,n).map(x=>x[0]+'h ('+x[1]+')').join(' · ')||'–';
+    h+=`<h2>Melhores horários e dias</h2><div class="stats" style="margin-bottom:12px">${A.hora?stat('Mais impressões (hora)',top(A.hora)):''}${V?stat('Mais visitas (hora, Brasília)',top(V.hr)):''}${stat('Mais vendas (hora, Brasília)',top(sh))}</div>`;
+    if(A.hd){const mx=Math.max(1,...A.hd.flat());h+=`<div class="card tw"><h3>Mapa de calor: impressões por dia da semana × hora</h3><div class="hm"><span></span>${Array.from({length:24},(_,i)=>`<b>${i}</b>`).join('')}${A.hd.map((r,k)=>`<b>${NMD[k]}</b>`+r.map((v,i)=>`<i title="${NMD[k]} ${i}h: ${v} impressões" style="background:color-mix(in srgb,var(--brand) ${Math.round(v/mx*100)}%,var(--soft))"></i>`).join('')).join('')}</div></div>`}
+    h+=`<div class="grid2">${A.hora?`<div class="card"><h3>Impressões por hora (conta Ads)</h3>${barsV(A.hora,A.hora.map((_,i)=>i+'h'))}</div>`:''}${V?`<div class="card"><h3>Visitas por hora (Brasília)</h3>${barsV(V.hr,V.hr.map((_,i)=>i+'h'))}</div>`:''}
+     ${A.dow?`<div class="card"><h3>Impressões por dia da semana</h3>${hbars(A.dow.map((v,i)=>({l:NMD[i],v,f:nn(v,0)})))}</div>`:''}</div>
+     <p class="note">Os horários do Google Ads seguem o fuso da conta; aqui assumo que é o de Brasília. Se não for, compare só os formatos, não as horas exatas.</p>`}
+  // dispositivos
+  const dv={},nd=k=>dv[k]??={custo:0,imp:0,cl:0,vis:0,v:0};
+  (A.disp||[]).forEach(x=>{const o=nd(devC(x.n));o.custo+=x.custo;o.imp+=x.imp;o.cl+=x.cl});
+  Object.entries(V?V.disp:{}).forEach(([k,n])=>nd(devC(k)).vis+=n);
+  sv.forEach(s=>{if(s.dv)nd(devC(s.dv)).v+=s.n});
+  const dr=Object.entries(dv).filter(([,o])=>o.imp||o.cl||o.vis||o.v).sort((a,b)=>b[1].custo-a[1].custo);
+  if(dr.length)h+=`<h2>Dispositivos</h2>`+TB(['Dispositivo','Gasto','% do gasto','Impressões','Cliques','CTR','CPC','Visitas','Vendas','Conversão','CPA'],dr.map(([k,o])=>`<tr>${td(esc(k))}${td(brl(o.custo))}${td(custo?pct(o.custo/custo):'–')}${td(nn(o.imp,0))}${td(nn(o.cl,0))}${td(o.imp?pct(o.cl/o.imp):'–')}${td(o.cl?brl(o.custo/o.cl):'–')}${td(o.vis||'–')}${td(o.v)}${td(o.cl&&o.v?pct(o.v/o.cl):'–')}${td(o.v?brl(o.custo/o.v):'–',o.v&&o.custo/o.v>cn?'neg':'')}</tr>`).join(''));
+  // países
+  const pc={};Object.entries(V?V.pais:{}).forEach(([k,n])=>(pc[k]??={v:0,s:0})['v']=n);sv.forEach(s=>{(pc[s.pais]??={v:0,s:0}).s+=s.n});
+  const pr=Object.entries(pc).sort((a,b)=>b[1].v-a[1].v||b[1].s-a[1].s);
+  if(pr.length)h+=`<h2>Países (planilha de vendas)</h2>`+TB(['País','Visitas','% das visitas','Vendas','Conversão','Receita'],pr.map(([k,o])=>`<tr>${td(esc(pname(k)))}${td(o.v)}${td(vis?pct(o.v/vis):'–')}${td(o.s)}${td(o.v?pct(o.s/o.v):'–')}${td(brl(o.s*cn))}</tr>`).join(''));
+  // palavras-chave
+  if(A.kw&&A.kw.length){const rows=A.kw.filter(x=>x.custo>0||x.cl>0).sort((a,b)=>b.custo-a.custo),zero=A.kw.length-rows.length,tc=A.kw.reduce((t,x)=>t+x.custo,0);
+    h+=`<h2>Palavras-chave</h2>`+TB(['Palavra-chave','Correspondência','Status','Gasto','% do gasto','Cliques','CTR','CPC','Alerta'],rows.map(x=>{const cp=x.cl?x.custo/x.cl:null,al=cpcMax!=null&&cp!=null&&cp>cpcMax?['CPC acima do máximo','neg']:x.st&&/paus/i.test(x.st)?['Pausada','']:['',''];
+      return `<tr>${td(esc(x.k))}${td(esc(x.tp||''))}${td(esc(x.st||''))}${td(brl(x.custo))}${td(tc?pct(x.custo/tc):'–')}${td(x.cl)}${td(pct(x.ctr))}${td(cp==null?'–':brl(cp))}${td(al[0]?`<span class="badge ${al[1]}">${al[0]}</span>`:'')}</tr>`}).join(''))+`<p class="note">${zero} palavra(s)-chave sem tráfego no período. O alerta compara o CPC da palavra com o CPC máximo da campanha (conversão × comissão líquida)${cpcMax==null?', que só aparece depois da primeira venda e com a comissão informada':''}.</p>`}
+  // termos de pesquisa
+  if(A.termos&&A.termos.length){const tt=A.termos,tc=tt.reduce((t,x)=>t+x.custo,0),mk=toks(p.nome),isM=t=>mk.some(m=>norm(t).includes(m)),cm=tt.filter(x=>isM(x.k)).reduce((t,x)=>t+x.custo,0),rows=tt.filter(x=>x.custo>0).sort((a,b)=>b.custo-a.custo).slice(0,25);
+    h+=`<h2>Termos que as pessoas pesquisaram</h2>${mk.length&&tc?`<div class="stats" style="margin-bottom:12px">${stat('Gasto em termos com a marca «'+esc(mk[0])+'»',brl(cm)+' ('+pct(cm/tc)+')')}${stat('Gasto em termos genéricos',brl(tc-cm)+' ('+pct((tc-cm)/tc)+')')}${stat('Termos com gasto',tt.filter(x=>x.custo>0).length+' de '+tt.length)}</div>`:''}`
+     +TB(['Termo','Gasto','% do gasto','Cliques','Impressões','CTR','CPC',mk.length?'Tem a marca':''],rows.map(x=>`<tr>${td(esc(x.k))}${td(brl(x.custo))}${td(tc?pct(x.custo/tc):'–')}${td(x.cl)}${td(nn(x.imp,0))}${td(x.imp?pct(x.cl/x.imp):'–')}${td(x.cl?brl(x.custo/x.cl):'–')}${mk.length?td(isM(x.k)?'sim':'não'):td('')}</tr>`).join(''))
+     +`<p class="note">Termos genéricos que gastam sem trazer venda são candidatos a palavra-chave negativa; compare o gasto deles com a sua comissão líquida (${brl(cn)}).</p>`}
+  if(A.palavra&&A.palavra.length)h+=`<h2>Palavras soltas mais caras</h2>`+TB(['Palavra','Gasto','Cliques','Impressões','Principais consultas'],A.palavra.slice().sort((a,b)=>b.custo-a.custo).slice(0,10).map(x=>`<tr>${td(esc(x.k))}${td(brl(x.custo))}${td(x.cl)}${td(nn(x.imp,0))}<td style="white-space:normal;text-align:left;min-width:260px">${esc(x.q)}</td></tr>`).join(''));
+  if(A.sexo||A.idade)h+=`<h2>Quem vê o anúncio</h2><div class="grid2">${A.sexo?`<div class="card"><h3>Sexo (impressões)</h3>${hbars(A.sexo.map(x=>({l:x.k,v:x.imp,f:pct(x.p)})))}</div>`:''}${A.idade?`<div class="card"><h3>Faixa de idade (impressões)</h3>${hbars(A.idade.map(x=>({l:x.k,v:x.imp,f:pct(x.p)})))}</div>`:''}</div>`;
+  return h}
+
+/* ================= RENDER E EVENTOS ================= */
 function render(){
   $('taxa').value=S.taxa||0;
   document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
-  $('app').innerHTML=tab==='contas'?viewContas():tab==='analise'?viewAnalise():tab==='comparar'?viewComparar():viewGraficos();
+  $('app').innerHTML=tab==='contas'?viewContas():tab==='ads'?viewAds():tab==='analise'?viewAnalise():tab==='comparar'?viewComparar():viewGraficos();
 }
 function persist(){
   try{localStorage.setItem(KEY,JSON.stringify(S));$('status').textContent='Salvo automaticamente no navegador · '+new Date().toLocaleTimeString('pt-BR')}
@@ -648,6 +953,7 @@ function prevTxt(box){
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-tab]');if(t){tab=t.dataset.tab;render();return}
   const b=e.target.closest('[data-a]');if(!b)return;
+  if(b.dataset.a==='import'){$('f-imp').click();return}
   const a=b.dataset.a,c=b.closest('[data-c]')?find(b):null,p=c&&b.closest('[data-p]')?prod(c,b):null;
   if(a==='addConta'){S.contas.push({id:uid(),nome:'Conta '+(S.contas.length+1),deps:[],prods:[]})}
   else if(a==='delConta'){if(!confirm('Excluir a conta "'+c.nome+'" e todos os seus dados?'))return;S.contas=S.contas.filter(x=>x!==c)}
@@ -676,6 +982,7 @@ document.addEventListener('change',e=>{
   if(e.target.id==='base'){S.base=e.target.value;upd();return}
   if(e.target.id==='fp'){S.fp=e.target.value;upd();return}
   if(e.target.id==='cmp'){S.cmp=e.target.value;upd();return}
+  if(e.target.id==='fa'){S.fa=e.target.value;upd();return}
   const n=e.target.dataset.n;
   if(n==='pais'||n==='cidade'){
     const box=e.target.closest('td');if(!box)return;
@@ -706,6 +1013,12 @@ $('b-save').onclick=()=>{const a=document.createElement('a');a.href=URL.createOb
 $('b-open').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='.json';
   i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());if(!Array.isArray(d.contas))throw 0;
     if(confirm('Substituir os dados atuais pelo backup?')){S=d;persist();location.reload()}}catch(e){alert('Arquivo de backup inválido.')}};i.click()};
+// importação: botão, seleção de arquivos e arrastar-e-soltar
+$('b-imp').onclick=()=>$('f-imp').click();
+$('f-imp').onchange=e=>{const f=[...e.target.files];e.target.value='';abrir(f)};
+document.addEventListener('dragover',e=>{if([...(e.dataTransfer?.types||[])].includes('Files')){e.preventDefault();document.body.classList.add('dz')}});
+document.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('dz')});
+document.addEventListener('drop',e=>{if(e.dataTransfer?.files?.length){e.preventDefault();document.body.classList.remove('dz');abrir(e.dataTransfer.files)}});
 const setTheme=t=>{document.documentElement.dataset.theme=t;$('b-theme').textContent=t==='dark'?'☀':'☾';localStorage.setItem('ads-theme',t)};
 $('b-theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 setTheme(localStorage.getItem('ads-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
